@@ -7,6 +7,7 @@ apply plugin: 'com.squareup.anvil'
 apply from: '../versioning.gradle'
 apply from: "$rootDir/spotless.gradle"
 apply plugin: 'com.duckduckgo.buildtime'
+apply plugin: "org.jlleitschuh.gradle.ktlint"
 
 ext {
     USE_ORCHESTRATOR = project.hasProperty('orchestrator') ? project.property('orchestrator') : false
@@ -312,7 +313,7 @@ dependencies {
     testImplementation project(path: ':common-test')
 
     // Lint
-    lintChecks project(path: ':lint-rules')
+    ktlintRuleset(project(":lint-rules"))
 }
 
 tasks.register('fastlaneVersionCode') {
