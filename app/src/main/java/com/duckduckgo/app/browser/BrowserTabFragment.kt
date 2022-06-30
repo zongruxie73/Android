@@ -203,6 +203,7 @@ import com.duckduckgo.remote.messaging.api.RemoteMessage
 import com.duckduckgo.downloads.api.DownloadCommand
 import com.duckduckgo.downloads.api.FileDownloader
 import com.duckduckgo.downloads.api.FileDownloader.PendingFileDownload
+import com.duckduckgo.site.permissions.api.SitePermissionsDialogLauncher
 import com.google.android.material.snackbar.BaseTransientBottomBar
 import kotlinx.coroutines.flow.cancellable
 import javax.inject.Provider
@@ -342,6 +343,9 @@ class BrowserTabFragment :
 
     @Inject
     lateinit var existingCredentialMatchDetector: ExistingCredentialMatchDetector
+
+    @Inject
+    lateinit var sitePermissionsDialogLauncher: SitePermissionsDialogLauncher
 
     private var urlExtractingWebView: UrlExtractingWebView? = null
 
@@ -934,6 +938,7 @@ class BrowserTabFragment :
                 notifyEmailSignEvent()
             }
             is Command.PrintLink -> launchPrint(it.url)
+            is Command.ShowSitePermissionsDialog -> showSitePermissionsDialog(it.permissionsToRequest)
         }
     }
 
@@ -2894,6 +2899,10 @@ class BrowserTabFragment :
                 )
             }
         }
+    }
+
+    private fun showSitePermissionsDialog(permissionsToRequest: Array<String>) {
+        sitePermissionsDialogLauncher.showSitePermissionDialog(requireContext(), permissionsToRequest)
     }
 
     override fun continueDownload(pendingFileDownload: PendingFileDownload) {
