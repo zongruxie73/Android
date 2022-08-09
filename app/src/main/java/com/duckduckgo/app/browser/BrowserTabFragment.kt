@@ -941,6 +941,7 @@ class BrowserTabFragment :
             }
             is Command.PrintLink -> launchPrint(it.url)
             is Command.ShowSitePermissionsDialog -> showSitePermissionsDialog(it.permissionsToRequest, it.request)
+            is Command.GrantSitePermissionRequest -> grantSitePermissionRequest(it.sitePermissionsToGrant, it.request)
         }
     }
 
@@ -2904,7 +2905,11 @@ class BrowserTabFragment :
     }
 
     private fun showSitePermissionsDialog(permissionsToRequest: Array<String>, request: PermissionRequest) {
-        sitePermissionsDialogLauncher.askForSitePermission(requireContext(), webView?.url ?: "", permissionsToRequest, request)
+        sitePermissionsDialogLauncher.askForSitePermission(requireContext(), webView?.url ?: "", tabId, permissionsToRequest, request)
+    }
+
+    private fun grantSitePermissionRequest(sitePermissionsToGrant: Array<String>, request: PermissionRequest) {
+        request.grant(sitePermissionsToGrant)
     }
 
     override fun continueDownload(pendingFileDownload: PendingFileDownload) {
