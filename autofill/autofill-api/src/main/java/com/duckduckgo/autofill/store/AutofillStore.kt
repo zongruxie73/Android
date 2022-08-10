@@ -58,14 +58,14 @@ interface AutofillStore {
      * @param rawUrl Can be a full, unmodified URL taken from the URL bar (containing subdomains, query params etc...)
      * @param credentials The credentials to be saved. The ID can be null.
      */
-    suspend fun saveCredentials(rawUrl: String, credentials: LoginCredentials): Long?
+    suspend fun saveCredentials(rawUrl: String, credentials: LoginCredentials): LoginCredentials?
 
     /**
      * Updates the credentials saved for the given URL
      * @param rawUrl Can be a full, unmodified URL taken from the URL bar (containing subdomains, query params etc...)
      * @param credentials The credentials to be updated. The ID can be null.
      */
-    suspend fun updateCredentials(rawUrl: String, credentials: LoginCredentials)
+    suspend fun updateCredentials(rawUrl: String, credentials: LoginCredentials): LoginCredentials?
 
     /**
      * Returns the full list of stored login credentials

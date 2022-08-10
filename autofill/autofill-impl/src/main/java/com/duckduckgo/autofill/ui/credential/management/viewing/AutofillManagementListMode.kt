@@ -148,10 +148,18 @@ class AutofillManagementListMode : DuckDuckGoFragment() {
     }
 
     companion object {
-        fun instance() =
+        fun instance() = AutofillManagementListMode().apply {
+            arguments = Bundle()
+        }
+
+        fun instanceDeepLinkToViewCredential(credentialId: Long) {
             AutofillManagementListMode().apply {
                 arguments = Bundle().apply {
+                    putLong(KEY_DEEP_LINK_CREDENTIAL_ID, credentialId)
                 }
             }
+        }
+
+        private const val KEY_DEEP_LINK_CREDENTIAL_ID = "credential_id"
     }
 }

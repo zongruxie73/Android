@@ -58,4 +58,10 @@
     <string name="credentialManagementViewMenuEdit">Edit</string>
     <string name="credentialManagementViewMenuDelete">Delete</string>
 
+    <!-- Autofill -->
+    <string name="autofillSettingsDisplayName">Autofill</string>
+    <string name="autofillLoginSavedSnackbarMessage">Login saved</string>
+    <string name="autofillLoginUpdatedSnackbarMessage">Login updated</string>
+    <string name="autofillSnackbarAction">View</string>
+
 </resources>

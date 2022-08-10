@@ -185,6 +185,7 @@ import com.duckduckgo.app.global.view.launchDefaultAppActivity
 import com.duckduckgo.app.playstore.PlayStoreUtils
 import com.duckduckgo.app.utils.ConflatedJob
 import com.duckduckgo.app.widget.AddWidgetLauncher
+import com.duckduckgo.autofill.impl.R as AutofillR
 import com.duckduckgo.appbuildconfig.api.AppBuildConfig
 import com.duckduckgo.autofill.BrowserAutofill
 import com.duckduckgo.autofill.Callback
@@ -342,6 +343,9 @@ class BrowserTabFragment :
 
     @Inject
     lateinit var existingCredentialMatchDetector: ExistingCredentialMatchDetector
+
+    @Inject
+    lateinit var autofillSettingsActivityLauncher: AutofillSettingsActivityLauncher
 
     private var urlExtractingWebView: UrlExtractingWebView? = null
 
@@ -1575,11 +1579,19 @@ class BrowserTabFragment :
         }
 
         setFragmentResultListener(RESULT_KEY_CREDENTIAL_RESULT_SAVE) { _, result ->
-            autofillCredentialsSelectionResultHandler.processSaveCredentialsResult(result, viewModel)
+            launch {
+                autofillCredentialsSelectionResultHandler.processSaveCredentialsResult(result, viewModel)?.let {
+                    showAuthenticationSavedOrUpdatedSnackbar(it, AutofillR.string.autofillLoginSavedSnackbarMessage)
+                }
+            }
         }
 
         setFragmentResultListener(RESULT_KEY_CREDENTIAL_RESULT_UPDATE) { _, result ->
-            autofillCredentialsSelectionResultHandler.processUpdateCredentialsResult(result, viewModel)
+            launch {
+                autofillCredentialsSelectionResultHandler.processUpdateCredentialsResult(result, viewModel)?.let {
+                    showAuthenticationSavedOrUpdatedSnackbar(it, AutofillR.string.autofillLoginUpdatedSnackbarMessage)
+                }
+            }
         }
     }
 
@@ -1614,6 +1626,15 @@ class BrowserTabFragment :
 
         val dialog = credentialAutofillDialogFactory.autofillSavingUpdateCredentialsDialog(url, credentials)
         showDialogHidingPrevious(dialog, CredentialUpdateExistingCredentialsDialog.TAG)
+    }
+
+    private suspend fun showAuthenticationSavedOrUpdatedSnackbar(loginCredentials: LoginCredentials, @StringRes messageResourceId: Int) {
+        withContext(Dispatchers.Main) {
+            browserLayout.makeSnackbarWithNoBottomInset(messageResourceId, Snackbar.LENGTH_LONG)
+                .setAction(R.string.autofillSnackbarAction) {
+                    context?.let { startActivity(autofillSettingsActivityLauncher.intent(it, loginCredentials)) }
+                }.show()
+        }
     }
 
     private fun showDialogHidingPrevious(dialog: DialogFragment, tag: String) {
