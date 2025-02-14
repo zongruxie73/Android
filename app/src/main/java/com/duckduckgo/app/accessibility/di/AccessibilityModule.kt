@@ -17,12 +17,10 @@
 package com.duckduckgo.app.accessibility.di
 
 import android.content.Context
-import com.duckduckgo.app.accessibility.AccessibilityManager
-import com.duckduckgo.app.accessibility.AppAccessibilityManager
 import com.duckduckgo.app.accessibility.data.AccessibilitySettingsDataStore
 import com.duckduckgo.app.accessibility.data.AccessibilitySettingsSharedPreferences
 import com.duckduckgo.app.di.AppCoroutineScope
-import com.duckduckgo.app.global.DispatcherProvider
+import com.duckduckgo.common.utils.DispatcherProvider
 import com.duckduckgo.di.scopes.AppScope
 import com.squareup.anvil.annotations.ContributesTo
 import dagger.Module
@@ -39,12 +37,6 @@ class AccessibilityModule {
     fun providesAccessibilitySettingsDataStore(
         context: Context,
         dispatcherProvider: DispatcherProvider,
-        @AppCoroutineScope appCoroutineScope: CoroutineScope
+        @AppCoroutineScope appCoroutineScope: CoroutineScope,
     ): AccessibilitySettingsDataStore = AccessibilitySettingsSharedPreferences(context, dispatcherProvider, appCoroutineScope)
-
-    @Provides
-    @SingleInstanceIn(AppScope::class)
-    fun providesAccessibilityManager(
-        accessibilitySettingsDataStore: AccessibilitySettingsDataStore
-    ): AccessibilityManager = AppAccessibilityManager(accessibilitySettingsDataStore)
 }

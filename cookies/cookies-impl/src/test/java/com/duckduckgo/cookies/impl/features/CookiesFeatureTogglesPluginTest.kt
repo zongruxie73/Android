@@ -16,13 +16,10 @@
 
 package com.duckduckgo.cookies.impl.features
 
-import com.duckduckgo.app.CoroutineTestRule
 import com.duckduckgo.appbuildconfig.api.AppBuildConfig
+import com.duckduckgo.common.test.CoroutineTestRule
 import com.duckduckgo.cookies.api.CookiesFeatureName.Cookie
 import com.duckduckgo.cookies.store.CookiesFeatureToggleRepository
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -31,8 +28,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
-@ExperimentalCoroutinesApi
 class CookiesFeatureTogglesPluginTest {
 
     @get:Rule var coroutineRule = CoroutineTestRule()
@@ -136,8 +134,8 @@ class CookiesFeatureTogglesPluginTest {
     private fun givenAppVersionIsGreaterThanMinSupportedVersion() {
         whenever(
             mockFeatureTogglesRepository.getMinSupportedVersion(
-                Cookie
-            )
+                Cookie,
+            ),
         ).thenReturn(1234)
 
         whenever(mockAppBuildConfig.versionCode).thenReturn(5678)

@@ -16,16 +16,16 @@
 
 package com.duckduckgo.privacy.config.store.features.amplinks
 
-import com.duckduckgo.app.global.DispatcherProvider
-import com.duckduckgo.privacy.config.api.AmpLinkException
+import com.duckduckgo.common.utils.DispatcherProvider
+import com.duckduckgo.feature.toggles.api.FeatureExceptions.FeatureException
 import com.duckduckgo.privacy.config.store.*
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import java.util.concurrent.CopyOnWriteArrayList
 
 interface AmpLinksRepository {
     fun updateAll(exceptions: List<AmpLinkExceptionEntity>, ampLinkFormats: List<AmpLinkFormatEntity>, ampKeywords: List<AmpKeywordEntity>)
-    val exceptions: List<AmpLinkException>
+    val exceptions: List<FeatureException>
     val ampLinkFormats: List<Regex>
     val ampKeywords: List<String>
 }
@@ -33,25 +33,28 @@ interface AmpLinksRepository {
 class RealAmpLinksRepository(
     val database: PrivacyConfigDatabase,
     coroutineScope: CoroutineScope,
-    dispatcherProvider: DispatcherProvider
+    dispatcherProvider: DispatcherProvider,
+    isMainProcess: Boolean,
 ) : AmpLinksRepository {
 
     private val ampLinksDao: AmpLinksDao = database.ampLinksDao()
 
-    override val exceptions = CopyOnWriteArrayList<AmpLinkException>()
+    override val exceptions = CopyOnWriteArrayList<FeatureException>()
     override val ampLinkFormats = CopyOnWriteArrayList<Regex>()
     override val ampKeywords = CopyOnWriteArrayList<String>()
 
     init {
         coroutineScope.launch(dispatcherProvider.io()) {
-            loadToMemory()
+            if (isMainProcess) {
+                loadToMemory()
+            }
         }
     }
 
     override fun updateAll(
         exceptions: List<AmpLinkExceptionEntity>,
         ampLinkFormats: List<AmpLinkFormatEntity>,
-        ampKeywords: List<AmpKeywordEntity>
+        ampKeywords: List<AmpKeywordEntity>,
     ) {
         ampLinksDao.updateAll(exceptions, ampLinkFormats, ampKeywords)
         loadToMemory()
@@ -60,7 +63,7 @@ class RealAmpLinksRepository(
     private fun loadToMemory() {
         exceptions.clear()
         ampLinksDao.getAllExceptions().map {
-            exceptions.add(it.toAmpLinkException())
+            exceptions.add(it.toFeatureException())
         }
 
         ampLinkFormats.clear()

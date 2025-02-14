@@ -20,16 +20,14 @@ import android.content.Context
 import androidx.annotation.VisibleForTesting
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.duckduckgo.app.global.DispatcherProvider
-import com.duckduckgo.mobile.android.vpn.model.VpnState
+import com.duckduckgo.common.utils.DispatcherProvider
 import com.duckduckgo.mobile.android.vpn.trackers.*
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.asExecutor
-import timber.log.Timber
 import java.util.*
 import javax.inject.Provider
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.asExecutor
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class VpnDatabaseCallback(
@@ -41,7 +39,6 @@ internal class VpnDatabaseCallback(
     override fun onCreate(db: SupportSQLiteDatabase) {
         super.onCreate(db)
         ioThread {
-            prepopulateUUID()
             prepopulateAppTrackerBlockingList()
             prepopulateAppTrackerExclusionList()
             prepopulateAppTrackerExceptionRules()
@@ -50,36 +47,10 @@ internal class VpnDatabaseCallback(
 
     override fun onDestructiveMigration(db: SupportSQLiteDatabase) {
         ioThread {
-            prepopulateUUID()
             prepopulateAppTrackerBlockingList()
             prepopulateAppTrackerExclusionList()
             prepopulateAppTrackerExceptionRules()
         }
-    }
-
-    override fun onOpen(db: SupportSQLiteDatabase) {
-        ioThread {
-            prepopulateTrackerEntities()
-        }
-    }
-
-    private fun prepopulateUUID() {
-        val uuid = UUID.randomUUID().toString()
-        vpnDatabase.get().vpnStateDao().insert(VpnState(uuid = uuid))
-        Timber.w("VPNDatabase: UUID pre-populated as $uuid")
-    }
-
-    private fun prepopulateTrackerEntities() {
-        context.resources.openRawResource(R.raw.full_app_trackers_blocklist).bufferedReader()
-            .use { it.readText() }
-            .also {
-                val blocklist = getFullAppTrackerBlockingList(it)
-                with(vpnDatabase.get().vpnAppTrackerBlockingDao()) {
-                    if (!hasTrackerEntities()) {
-                        insertTrackerEntities(blocklist.entities)
-                    }
-                }
-            }
     }
 
     @VisibleForTesting
@@ -121,9 +92,7 @@ internal class VpnDatabaseCallback(
     private fun parseAppTrackerExclusionList(json: String): List<AppTrackerExcludedPackage> {
         val moshi = Moshi.Builder().build()
         val adapter: JsonAdapter<JsonAppTrackerExclusionList> = moshi.adapter(JsonAppTrackerExclusionList::class.java)
-        return adapter.fromJson(json)?.rules.orEmpty().map {
-            AppTrackerExcludedPackage(it)
-        }
+        return adapter.fromJson(json)?.unprotectedApps.orEmpty()
     }
 
     private fun parseJsonAppTrackerExceptionRules(json: String): List<AppTrackerExceptionRule> {

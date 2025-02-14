@@ -17,57 +17,90 @@
 package com.duckduckgo.app.pixels
 
 import android.content.Context
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.work.*
 import com.duckduckgo.anvil.annotations.ContributesWorker
-import com.duckduckgo.app.browser.WebViewVersionProvider
+import com.duckduckgo.app.browser.defaultbrowsing.DefaultBrowserDetector
+import com.duckduckgo.app.di.AppCoroutineScope
 import com.duckduckgo.app.fire.UnsentForgetAllPixelStore
+import com.duckduckgo.app.lifecycle.MainProcessLifecycleObserver
+import com.duckduckgo.app.pixels.remoteconfig.AndroidBrowserConfigFeature
 import com.duckduckgo.app.statistics.pixels.Pixel
+import com.duckduckgo.app.statistics.pixels.Pixel.PixelParameter.DEFAULT_BROWSER
+import com.duckduckgo.app.statistics.pixels.Pixel.PixelParameter.WEBVIEW_FULL_VERSION
 import com.duckduckgo.app.statistics.pixels.Pixel.PixelParameter.WEBVIEW_VERSION
+import com.duckduckgo.browser.api.WebViewVersionProvider
+import com.duckduckgo.customtabs.api.CustomTabDetector
 import com.duckduckgo.di.scopes.AppScope
+import com.duckduckgo.privacyprotectionspopup.api.PrivacyProtectionsPopupExperimentExternalPixels
+import com.duckduckgo.verifiedinstallation.IsVerifiedPlayStoreInstall
 import com.squareup.anvil.annotations.ContributesMultibinding
 import dagger.SingleInstanceIn
-import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Provider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @ContributesMultibinding(
     scope = AppScope::class,
-    boundType = LifecycleObserver::class
+    boundType = MainProcessLifecycleObserver::class,
 )
 @SingleInstanceIn(AppScope::class)
 class EnqueuedPixelWorker @Inject constructor(
     private val workManager: WorkManager,
     private val pixel: Provider<Pixel>,
     private val unsentForgetAllPixelStore: UnsentForgetAllPixelStore,
-    private val webViewVersionProvider: WebViewVersionProvider
-) : LifecycleEventObserver {
+    private val webViewVersionProvider: WebViewVersionProvider,
+    private val defaultBrowserDetector: DefaultBrowserDetector,
+    private val customTabDetector: CustomTabDetector,
+    private val androidBrowserConfigFeature: AndroidBrowserConfigFeature,
+    private val privacyProtectionsPopupExperimentExternalPixels: PrivacyProtectionsPopupExperimentExternalPixels,
+    private val isVerifiedPlayStoreInstall: IsVerifiedPlayStoreInstall,
+    @AppCoroutineScope private val appCoroutineScope: CoroutineScope,
+) : MainProcessLifecycleObserver {
 
     private var launchedByFireAction: Boolean = false
 
-    override fun onStateChanged(
-        source: LifecycleOwner,
-        event: Lifecycle.Event
-    ) {
-        if (event == Lifecycle.Event.ON_CREATE) {
-            scheduleWorker(workManager)
-            launchedByFireAction = isLaunchByFireAction()
-        } else if (event == Lifecycle.Event.ON_START) {
-            if (launchedByFireAction) {
-                // skip the next on_start if branch
-                Timber.i("Suppressing app launch pixel")
-                launchedByFireAction = false
-                return
+    override fun onCreate(owner: LifecycleOwner) {
+        scheduleWorker(workManager)
+        launchedByFireAction = isLaunchByFireAction()
+    }
+
+    override fun onStart(owner: LifecycleOwner) {
+        Timber.d("onStart called")
+
+        if (launchedByFireAction) {
+            // skip the next on_start if branch
+            Timber.i("Suppressing app launch pixel")
+            launchedByFireAction = false
+            return
+        }
+        Timber.i("Sending app launch pixel")
+        val collectWebViewFullVersion =
+            androidBrowserConfigFeature.self().isEnabled() && androidBrowserConfigFeature.collectFullWebViewVersion().isEnabled()
+        val paramsMap = mutableMapOf<String, String>().apply {
+            put(WEBVIEW_VERSION, webViewVersionProvider.getMajorVersion())
+            put(DEFAULT_BROWSER, defaultBrowserDetector.isDefaultBrowser().toString())
+            if (collectWebViewFullVersion) {
+                put(WEBVIEW_FULL_VERSION, webViewVersionProvider.getFullVersion())
             }
-            Timber.i("Sending app launch pixel")
+        }.toMap()
+        appCoroutineScope.launch {
+            val popupExperimentParams = privacyProtectionsPopupExperimentExternalPixels.getPixelParams()
+            val parameters = paramsMap + popupExperimentParams
             pixel.get().fire(
                 pixel = AppPixelName.APP_LAUNCH,
-                parameters = mapOf(WEBVIEW_VERSION to webViewVersionProvider.getMajorVersion())
+                parameters = parameters,
             )
+
+            if (isVerifiedPlayStoreInstall() && !customTabDetector.isCustomTab()) {
+                pixel.get().fire(
+                    pixel = AppPixelName.APP_LAUNCH_VERIFIED_INSTALL,
+                    parameters = parameters,
+                )
+            }
         }
     }
 
@@ -111,10 +144,11 @@ class EnqueuedPixelWorker @Inject constructor(
 @ContributesWorker(AppScope::class)
 class RealEnqueuedPixelWorker(
     val context: Context,
-    parameters: WorkerParameters
+    parameters: WorkerParameters,
 ) : CoroutineWorker(context, parameters) {
     @Inject
     lateinit var pixel: Pixel
+
     @Inject
     lateinit var enqueuedPixelWorker: EnqueuedPixelWorker
 

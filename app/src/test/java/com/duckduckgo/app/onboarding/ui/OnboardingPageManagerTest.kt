@@ -18,11 +18,11 @@ package com.duckduckgo.app.onboarding.ui
 
 import com.duckduckgo.app.browser.defaultbrowsing.DefaultBrowserDetector
 import com.duckduckgo.app.global.DefaultRoleBrowserDialog
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
 class OnboardingPageManagerTest {
 
@@ -33,7 +33,11 @@ class OnboardingPageManagerTest {
 
     @Before
     fun setup() {
-        testee = OnboardingPageManagerWithTrackerBlocking(defaultRoleBrowserDialog, onboardingPageBuilder, mockDefaultBrowserDetector)
+        testee = OnboardingPageManagerWithTrackerBlocking(
+            defaultRoleBrowserDialog,
+            onboardingPageBuilder,
+            mockDefaultBrowserDetector,
+        )
     }
 
     @Test

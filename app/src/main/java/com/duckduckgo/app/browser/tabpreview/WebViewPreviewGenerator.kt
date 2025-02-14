@@ -16,10 +16,14 @@
 
 package com.duckduckgo.app.browser.tabpreview
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.webkit.WebView
 import androidx.core.view.drawToBitmap
-import com.duckduckgo.app.global.DispatcherProvider
+import com.duckduckgo.common.ui.view.toPx
+import com.duckduckgo.common.utils.DispatcherProvider
+import com.duckduckgo.mobile.android.R
+import kotlin.math.roundToInt
 import kotlinx.coroutines.withContext
 
 interface WebViewPreviewGenerator {
@@ -31,13 +35,17 @@ class FileBasedWebViewPreviewGenerator(private val dispatchers: DispatcherProvid
     override suspend fun generatePreview(webView: WebView): Bitmap {
         disableScrollbars(webView)
         val fullSizeBitmap = createBitmap(webView)
-        val scaledBitmap = scaleBitmap(fullSizeBitmap)
+
+        val scaledHeight = webView.context.resources.getDimension(R.dimen.gridItemPreviewHeight).toPx()
+        val scaledWidth = scaledHeight / fullSizeBitmap.height * fullSizeBitmap.width
+        val scaledBitmap = scaleBitmap(fullSizeBitmap, scaledHeight.roundToInt(), scaledWidth.roundToInt())
         enableScrollbars(webView)
         return scaledBitmap
     }
 
+    @SuppressLint("AvoidComputationUsage")
     private suspend fun createBitmap(webView: WebView): Bitmap {
-        return withContext(dispatchers.default()) {
+        return withContext(dispatchers.computation()) {
             webView.drawToBitmap()
         }
     }
@@ -56,18 +64,15 @@ class FileBasedWebViewPreviewGenerator(private val dispatchers: DispatcherProvid
         }
     }
 
-    private suspend fun scaleBitmap(bitmap: Bitmap): Bitmap {
-        return withContext(dispatchers.default()) {
+    @SuppressLint("AvoidComputationUsage")
+    private suspend fun scaleBitmap(bitmap: Bitmap, scaledHeight: Int, scaledWidth: Int): Bitmap {
+        return withContext(dispatchers.computation()) {
             return@withContext Bitmap.createScaledBitmap(
                 bitmap,
-                (bitmap.width * COMPRESSION_RATIO).toInt(),
-                (bitmap.height * COMPRESSION_RATIO).toInt(),
-                false
+                scaledWidth,
+                scaledHeight,
+                false,
             )
         }
-    }
-
-    companion object {
-        private const val COMPRESSION_RATIO = 0.5
     }
 }

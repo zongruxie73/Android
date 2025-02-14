@@ -19,6 +19,7 @@ package com.duckduckgo.app.browser
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.animation.PropertyValuesHolder
+import android.annotation.SuppressLint
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -28,8 +29,9 @@ import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
-import com.duckduckgo.mobile.android.ui.view.setAllParentsClip
+import com.duckduckgo.common.ui.view.setAllParentsClip
 
+@SuppressLint("NoLifecycleObserver") // we don't observe app lifecycle
 class PulseAnimation(private val lifecycleOwner: LifecycleOwner) : DefaultLifecycleObserver {
     private var pulseAnimation: AnimatorSet = AnimatorSet()
     private var highlightImageView: View? = null
@@ -95,14 +97,14 @@ class PulseAnimation(private val lifecycleOwner: LifecycleOwner) : DefaultLifecy
                 view,
                 PropertyValuesHolder.ofFloat("scaleX", fromScaleSize, toScaleSize),
                 PropertyValuesHolder.ofFloat("scaleY", fromScaleSize, toScaleSize),
-                PropertyValuesHolder.ofFloat("alpha", 0f, 1f, 1f, 0.1f)
+                PropertyValuesHolder.ofFloat("alpha", 0f, 1f, 1f, 0.1f),
             )
         } else {
             ObjectAnimator.ofPropertyValuesHolder(
                 view,
                 PropertyValuesHolder.ofFloat("scaleX", ANIM_INITIAL_SCALE, ANIM_FINAL_SCALE),
                 PropertyValuesHolder.ofFloat("scaleY", ANIM_INITIAL_SCALE, ANIM_FINAL_SCALE),
-                PropertyValuesHolder.ofFloat("alpha", 0f, 1f, 1f, 0.1f)
+                PropertyValuesHolder.ofFloat("alpha", 0f, 1f, 1f, 0.1f),
             )
         }
     }

@@ -19,12 +19,12 @@ package com.duckduckgo.app.icon.ui
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.duckduckgo.anvil.annotations.ContributesViewModel
-import com.duckduckgo.app.global.SingleLiveEvent
 import com.duckduckgo.app.icon.api.AppIcon
 import com.duckduckgo.app.icon.api.IconModifier
 import com.duckduckgo.app.pixels.AppPixelName
 import com.duckduckgo.app.settings.db.SettingsDataStore
 import com.duckduckgo.app.statistics.pixels.Pixel
+import com.duckduckgo.common.utils.SingleLiveEvent
 import com.duckduckgo.di.scopes.ActivityScope
 import javax.inject.Inject
 
@@ -32,17 +32,17 @@ import javax.inject.Inject
 class ChangeIconViewModel @Inject constructor(
     private val settingsDataStore: SettingsDataStore,
     private val appIconModifier: IconModifier,
-    private val pixel: Pixel
+    private val pixel: Pixel,
 ) : ViewModel() {
 
     data class IconViewData(
         val appIcon: AppIcon,
-        val selected: Boolean
+        val selected: Boolean,
     ) {
         companion object {
             fun from(
                 appIcon: AppIcon,
-                selectedAppIcon: AppIcon
+                selectedAppIcon: AppIcon,
             ): IconViewData {
                 return if (appIcon.componentName == selectedAppIcon.componentName) {
                     IconViewData(appIcon, true)
@@ -54,7 +54,7 @@ class ChangeIconViewModel @Inject constructor(
     }
 
     data class ViewState(
-        val appIcons: List<IconViewData>
+        val appIcons: List<IconViewData>,
     )
 
     sealed class Command {

@@ -34,20 +34,19 @@ class AppTrackerJsonParser {
             return AppTrackerBlocklist(version, appTrackers, appPackages, entities)
         }
 
-        fun parseBlocklistVersion(parsed: JsonAppBlockingList?) = parsed?.version.orEmpty()
+        private fun parseBlocklistVersion(parsed: JsonAppBlockingList?) = parsed?.version.orEmpty()
 
         fun parseAppTrackers(parsed: JsonAppBlockingList?) =
             parsed
                 ?.trackers
                 .orEmpty()
-                .filter { !it.value.isCdn }
+                .filter { it.value.defaultAction == "block" }
                 .mapValues {
                     AppTracker(
                         hostname = it.key,
                         trackerCompanyId = it.value.owner.name.hashCode(),
                         owner = it.value.owner,
-                        app = it.value.app,
-                        isCdn = it.value.isCdn
+                        app = TrackerApp(1, 1.0),
                     )
                 }
                 .map { it.value }
@@ -69,13 +68,11 @@ class AppTrackerJsonParser {
                         trackerCompanyId = it.key.hashCode(),
                         entityName = it.key,
                         score = it.value.score,
-                        signals = it.value.signals
+                        signals = it.value.signals,
                     )
                 }
                 .map { it.value }
                 .sortedBy { it.score }
         }
-
     }
-
 }

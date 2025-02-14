@@ -36,12 +36,10 @@ enum class DeviceShieldPixelNames(override val pixelName: String, val enqueue: B
     ATP_DISABLE_UPON_APP_LAUNCH("m_atp_ev_disabled_on_launch_c"),
     ATP_DISABLE_UPON_APP_LAUNCH_DAILY("m_atp_ev_disabled_on_launch_d"),
     ATP_ENABLE_DAILY("m_atp_ev_enabled_d"),
-    ATP_UPTIME("m_atp_ev_uptime_c"),
     ATP_DISABLE_DAILY("m_atp_ev_disabled_d"),
-    ATP_LAST_DAY_ENABLE_COUNT_DAILY("m_atp_ev_enabled_count_d"),
-    ATP_LAST_DAY_DISABLE_COUNT_DAILY("m_atp_ev_disabled_count_d"),
 
     ATP_ENABLE_UNIQUE("m_atp_ev_enabled_u"),
+    ATP_ENABLE_MONTHLY("m_atp_ev_enabled_monthly"),
     ATP_ENABLE_FROM_REMINDER_NOTIFICATION_UNIQUE("m_atp_ev_enabled_reminder_notification_u"),
     ATP_ENABLE_FROM_REMINDER_NOTIFICATION_DAILY("m_atp_ev_enabled_reminder_notification_d"),
     ATP_ENABLE_FROM_REMINDER_NOTIFICATION("m_atp_ev_enabled_reminder_notification_c"),
@@ -106,6 +104,8 @@ enum class DeviceShieldPixelNames(override val pixelName: String, val enqueue: B
 
     ATP_ESTABLISH_TUN_INTERFACE_ERROR_DAILY("m_atp_ev_establish_tun_error_d"),
     ATP_ESTABLISH_TUN_INTERFACE_ERROR("m_atp_ev_establish_tun_error_c"),
+    ATP_ESTABLISH_NULL_TUN_INTERFACE_ERROR_DAILY("m_atp_ev_establish_null_tun_error_d"),
+    ATP_ESTABLISH_NULL_TUN_INTERFACE_ERROR("m_atp_ev_establish_null_tun_error_c"),
 
     ATP_PROCESS_EXPENDABLE_LOW_DAILY("m_atp_ev_expen_memory_low_d"),
     ATP_PROCESS_EXPENDABLE_MODERATE_DAILY("m_atp_ev_expen_memory_moderate_d"),
@@ -128,40 +128,19 @@ enum class DeviceShieldPixelNames(override val pixelName: String, val enqueue: B
     ATP_DID_REPORT_ISSUES_FROM_TRACKER_ACTIVITY_DAILY("m_atp_imp_tracker_activity_report_issues_d"),
 
     ATP_APP_BREAKAGE_REPORT("m_atp_breakage_report"),
+    ATP_APP_BREAKAGE_REPORT_DAILY("m_atp_breakage_report_d"),
     ATP_APP_BREAKAGE_REPORT_UNIQUE("m_atp_breakage_report_u"),
     ATP_APP_CPU_MONITOR_REPORT("m_atp_ev_cpu_usage_above_%d"),
-    ATP_APP_HEALTH_MONITOR_REPORT("m_atp_health_monitor_report"),
-    ATP_APP_HEALTH_ALERT_DAILY("m_atp_health_alert_%s_d"),
-    ATP_APP_BAD_HEALTH_RESOLVED_BY_RESTART("m_atp_bad_health_resolved_by_restart_c"),
-    ATP_APP_BAD_HEALTH_RESOLVED_BY_RESTART_DAILY("m_atp_bad_health_resolved_by_restart_d"),
-    ATP_APP_BAD_HEALTH_RESOLVED_ITSELF("m_atp_bad_health_resolved_itself_c"),
-    ATP_APP_BAD_HEALTH_RESOLVED_ITSELF_DAILY("m_atp_bad_health_resolved_itself_d"),
-    ATP_DID_RESTART_VPN_ON_BAD_HEALTH("m_atp_did_restart_vpn_on_bad_health_c"),
-    ATP_DID_RESTART_VPN_ON_BAD_HEALTH_DAILY("m_atp_did_restart_vpn_on_bad_health_d"),
-    ATP_DID_RESTART_VPN_PROCESS_ON_BAD_HEALTH("m_atp_did_restart_vpn_process_on_bad_health_c"),
-    ATP_DID_RESTART_VPN_PROCESS_ON_BAD_HEALTH_DAILY("m_atp_did_restart_vpn_process_on_bad_health_d"),
-
-    ATP_ENCRYPTED_IO_EXCEPTION("m_atp_ev_encrypted_io_error_c"),
-    ATP_ENCRYPTED_GENERAL_EXCEPTION("m_atp_ev_encrypted_error_c"),
 
     ATP_DID_SHOW_REPORT_BREAKAGE_APP_LIST("m_atp_imp_report_breakage_c"),
     ATP_DID_SHOW_REPORT_BREAKAGE_APP_LIST_DAILY("m_atp_imp_report_breakage_d"),
-    ATP_DID_SHOW_REPORT_BREAKAGE_TEXT_FORM("m_atp_imp_report_breakage_desc_c"),
-    ATP_DID_SHOW_REPORT_BREAKAGE_TEXT_FORM_DAILY("m_atp_imp_report_breakage_desc_d"),
     ATP_DID_SHOW_REPORT_BREAKAGE_SINGLE_CHOICE_FORM("m_atp_imp_report_breakage_login_c"),
     ATP_DID_SHOW_REPORT_BREAKAGE_SINGLE_CHOICE_FORM_DAILY("m_atp_imp_report_breakage_login_d"),
 
     ATP_DID_SHOW_DISABLE_TRACKING_PROTECTION_DIALOG("m_atp_imp_disable_protection_dialog_c"),
-    ATP_DID_CHOOSE_DISABLE_TRACKING_PROTECTION_DIALOG("m_atp_ev_selected_disable_protection_c"),
+    ATP_DID_CHOOSE_DISABLE_TRACKING_PROTECTION_DIALOG("m_atp_ev_selected_disable_protection_c", enqueue = true),
     ATP_DID_CHOOSE_DISABLE_ONE_APP_PROTECTION_DIALOG("m_atp_ev_selected_disable_app_protection_c"),
     ATP_DID_CHOOSE_CANCEL_APP_PROTECTION_DIALOG("m_atp_ev_selected_cancel_app_protection_c"),
-
-    ATP_DID_SHOW_WAITLIST_DIALOG("m_atp_imp_waitlist_dialog_c"),
-    ATP_DID_PRESS_WAITLIST_DIALOG_NOTIFY_ME("m_atp_ev_waitlist_dialog_notify_me_c"),
-    ATP_DID_PRESS_WAITLIST_DIALOG_DISMISS("m_atp_ev_waitlist_dialog_dismiss_c"),
-
-    ATP_RECEIVED_UNKNOWN_PACKET_PROTOCOL("m_atp_ev_unknown_packet_%d_c"),
-    ATP_RECEIVED_UNKNOWN_PACKET_PROTOCOL_DAILY("m_atp_ev_unknown_packet_%d_d"),
 
     ATP_DID_SHOW_VPN_CONFLICT_DIALOG("m_atp_imp_vpn_conflict_dialog_c"),
     ATP_DID_CHOOSE_DISMISS_VPN_CONFLICT_DIALOG_DAILY("m_atp_ev_vpn_conflict_dialog_dismiss_d"),
@@ -170,9 +149,6 @@ enum class DeviceShieldPixelNames(override val pixelName: String, val enqueue: B
     ATP_DID_CHOOSE_OPEN_SETTINGS_VPN_CONFLICT_DIALOG("m_atp_ev_vpn_conflict_dialog_open_settings_c"),
     ATP_DID_CHOOSE_CONTINUE_VPN_CONFLICT_DIALOG("m_atp_ev_vpn_conflict_dialog_continue_c"),
     ATP_DID_CHOOSE_CONTINUE_VPN_CONFLICT_DIALOG_DAILY("m_atp_ev_vpn_conflict_dialog_continue_d"),
-
-    ATP_DID_OPEN_BETA_INSTRUCTIONS("m_atp_imp_beta_instructions_c"),
-    ATP_DID_OPEN_BETA_INSTRUCTIONS_DAILY("m_atp_imp_beta_instructions_d"),
 
     ATP_DID_SHOW_EXCLUSION_LIST_ACTIVITY_UNIQUE("m_atp_imp_exclusion_list_activity_u"),
     ATP_DID_SHOW_EXCLUSION_LIST_ACTIVITY_DAILY("m_atp_imp_exclusion_list_activity_d"),
@@ -214,10 +190,6 @@ enum class DeviceShieldPixelNames(override val pixelName: String, val enqueue: B
     ATP_DID_SHOW_PROMOTE_ALWAYS_ON_DIALOG("m_atp_imp_promote_always_on_dialog_c"),
     ATP_DID_CHOOSE_OPEN_SETTINGS_PROMOTE_ALWAYS_ON_DIALOG_DAILY("m_atp_ev_selected_settings_promote_always_on_d"),
     ATP_DID_CHOOSE_OPEN_SETTINGS_PROMOTE_ALWAYS_ON_DIALOG("m_atp_ev_selected_settings_promote_always_on_c"),
-    ATP_DID_CHOOSE_REMIND_LATER_PROMOTE_ALWAYS_ON_DIALOG_DAILY("m_atp_ev_selected_remind_later_promote_always_on_d"),
-    ATP_DID_CHOOSE_REMIND_LATER_PROMOTE_ALWAYS_ON_DIALOG("m_atp_ev_selected_remind_later_promote_always_on_c"),
-    ATP_DID_CHOOSE_FORGET_PROMOTE_ALWAYS_ON_DIALOG_DAILY("m_atp_ev_selected_forget_later_promote_always_on_d"),
-    ATP_DID_CHOOSE_FORGET_PROMOTE_ALWAYS_ON_DIALOG("m_atp_ev_selected_forget_later_promote_always_on_c"),
 
     ATP_DID_ENABLE_APP_PROTECTION_FROM_ALL("m_atp_imp_enable_app_protection_all_c"),
     ATP_DID_ENABLE_APP_PROTECTION_FROM_DETAIL("m_atp_imp_enable_app_protection_detail_c"),
@@ -230,5 +202,59 @@ enum class DeviceShieldPixelNames(override val pixelName: String, val enqueue: B
     ATP_REPORT_UNPROTECTED_APPS_BUCKET("m_atp_unprotected_apps_bucket_%d_c"),
     ATP_REPORT_UNPROTECTED_APPS_BUCKET_DAILY("m_atp_unprotected_apps_bucket_%d_d"),
 
+    ATP_DID_PRESS_APPTP_ENABLED_CTA_BUTTON("m_atp_ev_apptp_enabled_cta_button_press"),
+
+    ATP_REPORT_VPN_NETWORK_STACK_CREATE_ERROR("m_atp_ev_apptp_create_network_stack_error_c"),
+    ATP_REPORT_VPN_NETWORK_STACK_CREATE_ERROR_DAILY("m_atp_ev_apptp_create_network_stack_error_d"),
+
+    ATP_REPORT_TUNNEL_THREAD_STOP_TIMEOUT("m_atp_ev_apptp_tunnel_thread_stop_timeout_c", enqueue = true),
+    ATP_REPORT_TUNNEL_THREAD_STOP_TIMEOUT_DAILY("m_atp_ev_apptp_tunnel_thread_stop_timeout_d", enqueue = true),
+
+    REPORT_VPN_ALWAYS_ON_TRIGGERED("m_vpn_ev_always_on_triggered_c"),
+    REPORT_VPN_ALWAYS_ON_TRIGGERED_DAILY("m_vpn_ev_always_on_triggered_d"),
+
+    REPORT_NOTIFY_START_FAILURE("m_vpn_ev_notify_start_failed_d"),
+    REPORT_NOTIFY_START_FAILURE_DAILY("m_vpn_ev_notify_start_failed_c"),
+
+    REPORT_TLS_PARSING_ERROR_CODE_DAILY("m_atp_tls_parsing_error_code_%d_d"),
+
+    VPN_SNOOZE_STARTED("m_vpn_ev_snooze_started_c", enqueue = true),
+    VPN_SNOOZE_STARTED_DAILY("m_vpn_ev_snooze_started_d", enqueue = true),
+    VPN_SNOOZE_ENDED("m_vpn_ev_snooze_ended_c", enqueue = true),
+    VPN_SNOOZE_ENDED_DAILY("m_vpn_ev_snooze_ended_d", enqueue = true),
+
+    VPN_MOTO_G_FIX_DAILY("m_vpn_ev_moto_g_fix_d", enqueue = true),
+    VPN_START_ATTEMPT("m_vpn_ev_start_attempt_c", enqueue = true),
+    VPN_START_ATTEMPT_SUCCESS("m_vpn_ev_start_attempt_success_c", enqueue = true),
+    VPN_START_ATTEMPT_FAILURE("m_vpn_ev_start_attempt_failure_c", enqueue = true),
+
+    NEW_TAB_SECTION_TOGGLED_OFF("m_new_tab_page_customize_section_off_appTP"),
+    NEW_TAB_SECTION_TOGGLED_ON("m_new_tab_page_customize_section_on_appTP"),
+
+    APPTP_PPRO_UPSELL_ENABLED_BANNER_SHOWN("m_atp_ppro-upsell_banner-apptp-enabled_show_c"),
+    APPTP_PPRO_UPSELL_ENABLED_BANNER_SHOWN_DAILY("m_atp_ppro-upsell_banner-apptp-enabled_show_d"),
+    APPTP_PPRO_UPSELL_ENABLED_BANNER_SHOWN_UNIQUE("m_atp_ppro-upsell_banner-apptp-enabled_show_u"),
+
+    APPTP_PPRO_UPSELL_ENABLED_BANNER_DISMISSED("m_atp_ppro-upsell_banner-apptp-enabled_dismissed_c"),
+
+    APPTP_PPRO_UPSELL_ENABLED_BANNER_LINK_CLICKED("m_atp_ppro-upsell_banner-apptp-enabled_link_clicked_c"),
+    APPTP_PPRO_UPSELL_ENABLED_BANNER_LINK_CLICKED_DAILY("m_atp_ppro-upsell_banner-apptp-enabled_link_clicked_d"),
+    APPTP_PPRO_UPSELL_ENABLED_BANNER_LINK_CLICKED_UNIQUE("m_atp_ppro-upsell_banner-apptp-enabled_link_clicked_u"),
+
+    APPTP_PPRO_UPSELL_DISABLED_INFO_SHOWN("m_atp_ppro-upsell_info-apptp-disabled_show_c"),
+    APPTP_PPRO_UPSELL_DISABLED_INFO_SHOWN_DAILY("m_atp_ppro-upsell_info-apptp-disabled_show_d"),
+    APPTP_PPRO_UPSELL_DISABLED_INFO_SHOWN_UNIQUE("m_atp_ppro-upsell_info-apptp-disabled_show_u"),
+
+    APPTP_PPRO_UPSELL_DISABLED_INFO_LINK_CLICKED("m_atp_ppro-upsell_info-apptp-disabled_link_clicked_c"),
+    APPTP_PPRO_UPSELL_DISABLED_INFO_LINK_CLICKED_DAILY("m_atp_ppro-upsell_info-apptp-disabled_link_clicked_d"),
+    APPTP_PPRO_UPSELL_DISABLED_INFO_LINK_CLICKED_UNIQUE("m_atp_ppro-upsell_info-apptp-disabled_link_clicked_u"),
+
+    APPTP_PPRO_UPSELL_REVOKED_INFO_SHOWN("m_atp_ppro-upsell_info-apptp-revoked_show_c"),
+    APPTP_PPRO_UPSELL_REVOKED_INFO_SHOWN_DAILY("m_atp_ppro-upsell_info-apptp-revoked_show_d"),
+    APPTP_PPRO_UPSELL_REVOKED_INFO_SHOWN_UNIQUE("m_atp_ppro-upsell_info-apptp-revoked_show_u"),
+
+    APPTP_PPRO_UPSELL_REVOKED_INFO_LINK_CLICKED("m_atp_ppro-upsell_info-apptp-revoked_link_clicked_c"),
+    APPTP_PPRO_UPSELL_REVOKED_INFO_LINK_CLICKED_DAILY("m_atp_ppro-upsell_info-apptp-revoked_link_clicked_d"),
+    APPTP_PPRO_UPSELL_REVOKED_INFO_LINK_CLICKED_UNIQUE("m_atp_ppro-upsell_info-apptp-revoked_link_clicked_u"),
     ;
 }

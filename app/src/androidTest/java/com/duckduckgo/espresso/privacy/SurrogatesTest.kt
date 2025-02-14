@@ -17,51 +17,44 @@
 package com.duckduckgo.espresso.privacy
 
 import android.webkit.WebView
+import androidx.test.core.app.*
+import androidx.test.espresso.*
 import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.IdlingPolicies
-import androidx.test.espresso.IdlingRegistry
-import androidx.test.espresso.IdlingResource
 import androidx.test.espresso.action.ViewActions
 import androidx.test.espresso.matcher.ViewMatchers.*
+import androidx.test.espresso.web.model.Atoms.script
 import androidx.test.espresso.web.sugar.Web.onWebView
 import androidx.test.ext.junit.rules.activityScenarioRule
 import androidx.test.platform.app.InstrumentationRegistry
 import com.duckduckgo.app.browser.BrowserActivity
 import com.duckduckgo.app.browser.R
-import org.junit.Rule
-import org.junit.Test
-import java.util.concurrent.TimeUnit
-import androidx.test.espresso.web.model.Atoms.script
-import com.duckduckgo.espresso.PrivacyTest
-import com.duckduckgo.espresso.WebViewIdlingResource
-import com.duckduckgo.espresso.waitForView
+import com.duckduckgo.espresso.*
 import com.duckduckgo.privacy.config.impl.network.JSONObjectAdapter
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
 
 class SurrogatesTest {
 
     @get:Rule
-    var activityScenarioRule = activityScenarioRule<BrowserActivity>(
-        BrowserActivity.intent(
-            InstrumentationRegistry.getInstrumentation().targetContext,
-            "https://privacy-test-pages.glitch.me/privacy-protections/surrogates/"
-        )
-    )
+    var activityScenarioRule = activityScenarioRule<BrowserActivity>()
 
     @Test @PrivacyTest
     fun whenProtectionsAreEnabledSurrogatesAreLoaded() {
-        val waitTime = 16000L
-        IdlingPolicies.setMasterPolicyTimeout(waitTime * 10, TimeUnit.MILLISECONDS)
-        IdlingPolicies.setIdlingResourceTimeout(waitTime * 10, TimeUnit.MILLISECONDS)
+        preparationsForPrivacyTest()
 
         var webView: WebView? = null
 
-        onView(isRoot()).perform(waitForView(withId(R.id.browserMenu)))
-
-        activityScenarioRule.scenario.onActivity {
+        val scenario = ActivityScenario.launch<BrowserActivity>(
+            BrowserActivity.intent(
+                InstrumentationRegistry.getInstrumentation().targetContext,
+                "https://privacy-test-pages.site/privacy-protections/surrogates/",
+            ),
+        )
+        scenario.onActivity {
             webView = it.findViewById(R.id.browserWebView)
         }
 
@@ -83,15 +76,17 @@ class SurrogatesTest {
 
     @Test @PrivacyTest
     fun whenProtectionsAreDisabledSurrogatesAreNotLoaded() {
-        val waitTime = 16000L
-        IdlingPolicies.setMasterPolicyTimeout(waitTime * 10, TimeUnit.MILLISECONDS)
-        IdlingPolicies.setIdlingResourceTimeout(waitTime * 10, TimeUnit.MILLISECONDS)
+        preparationsForPrivacyTest()
 
         var webView: WebView? = null
 
-        onView(isRoot()).perform(waitForView(withId(R.id.browserMenu)))
-
-        activityScenarioRule.scenario.onActivity {
+        val scenario = ActivityScenario.launch<BrowserActivity>(
+            BrowserActivity.intent(
+                InstrumentationRegistry.getInstrumentation().targetContext,
+                "https://privacy-test-pages.site/privacy-protections/surrogates/",
+            ),
+        )
+        scenario.onActivity {
             webView = it.findViewById(R.id.browserWebView)
         }
 
@@ -101,6 +96,9 @@ class SurrogatesTest {
         onView(withId(R.id.browserMenu)).perform(ViewActions.click())
         onView(isRoot()).perform(waitForView(withId(R.id.privacyProtectionMenuItem)))
         onView(withId(R.id.privacyProtectionMenuItem)).perform(ViewActions.click())
+
+        // handle the privacy protection toggle check screen showing
+        onView(isRoot()).perform(ViewActions.pressBack())
 
         val idlingResourceForScript: IdlingResource = WebViewIdlingResource(webView!!)
         IdlingRegistry.getInstance().register(idlingResourceForScript)

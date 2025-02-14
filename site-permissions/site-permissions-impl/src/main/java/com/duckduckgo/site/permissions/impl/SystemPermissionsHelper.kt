@@ -33,10 +33,11 @@ import javax.inject.Inject
 interface SystemPermissionsHelper {
     fun hasMicPermissionsGranted(): Boolean
     fun hasCameraPermissionsGranted(): Boolean
+    fun hasLocationPermissionsGranted(): Boolean
     fun registerPermissionLaunchers(
         caller: ActivityResultCaller,
         onResultPermissionRequest: (Boolean) -> Unit,
-        onResultMultiplePermissionsRequest: (Map<String, Boolean>) -> Unit
+        onResultMultiplePermissionsRequest: (Map<String, Boolean>) -> Unit,
     )
     fun requestPermission(permission: String)
     fun requestMultiplePermissions(permissions: Array<String>)
@@ -45,11 +46,12 @@ interface SystemPermissionsHelper {
 
 @ContributesBinding(FragmentScope::class)
 class SystemPermissionsHelperImpl @Inject constructor(
-    private val context: Context
+    private val context: Context,
 ) : SystemPermissionsHelper {
 
     private lateinit var permissionLauncher: ActivityResultLauncher<String>
     private lateinit var multiplePermissionsLauncher: ActivityResultLauncher<Array<String>>
+    private var currentPermissionRequested: String? = null
 
     override fun hasMicPermissionsGranted(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED &&
@@ -58,10 +60,15 @@ class SystemPermissionsHelperImpl @Inject constructor(
     override fun hasCameraPermissionsGranted(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
+    override fun hasLocationPermissionsGranted(): Boolean {
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    }
+
     override fun registerPermissionLaunchers(
         caller: ActivityResultCaller,
         onResultPermissionRequest: (Boolean) -> Unit,
-        onResultMultiplePermissionsRequest: (Map<String, Boolean>) -> Unit
+        onResultMultiplePermissionsRequest: (Map<String, Boolean>) -> Unit,
     ) {
         permissionLauncher = caller.registerForActivityResult(RequestPermission()) {
             onResultPermissionRequest.invoke(it)
@@ -74,6 +81,7 @@ class SystemPermissionsHelperImpl @Inject constructor(
 
     override fun requestPermission(permission: String) {
         if (this::permissionLauncher.isInitialized) {
+            currentPermissionRequested = permission
             permissionLauncher.launch(permission)
         } else {
             throw IllegalAccessException("registerPermissionLaunchers() needs to be called before requestPermission()")
@@ -82,6 +90,7 @@ class SystemPermissionsHelperImpl @Inject constructor(
 
     override fun requestMultiplePermissions(permissions: Array<String>) {
         if (this::multiplePermissionsLauncher.isInitialized) {
+            currentPermissionRequested = permissions.first()
             multiplePermissionsLauncher.launch(permissions)
         } else {
             throw IllegalAccessException("registerPermissionLaunchers() needs to be called before requestMultiplePermissions()")
@@ -89,5 +98,5 @@ class SystemPermissionsHelperImpl @Inject constructor(
     }
 
     override fun isPermissionsRejectedForever(activity: Activity): Boolean =
-        !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.RECORD_AUDIO)
+        currentPermissionRequested?.let { !ActivityCompat.shouldShowRequestPermissionRationale(activity, it) } ?: true
 }

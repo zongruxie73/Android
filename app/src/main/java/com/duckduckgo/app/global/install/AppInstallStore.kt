@@ -21,13 +21,13 @@ import android.content.SharedPreferences
 import androidx.annotation.UiThread
 import androidx.annotation.VisibleForTesting
 import androidx.core.content.edit
-import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
-import timber.log.Timber
+import com.duckduckgo.app.lifecycle.MainProcessLifecycleObserver
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import timber.log.Timber
 
-interface AppInstallStore : DefaultLifecycleObserver {
+interface AppInstallStore : MainProcessLifecycleObserver {
     var installTimestamp: Long
 
     var widgetInstalled: Boolean
@@ -62,8 +62,7 @@ class AppInstallSharedPreferences @Inject constructor(private val context: Conte
 
     override fun hasInstallTimestampRecorded(): Boolean = preferences.contains(KEY_TIMESTAMP_UTC)
 
-    private val preferences: SharedPreferences
-        get() = context.getSharedPreferences(FILENAME, Context.MODE_PRIVATE)
+    private val preferences: SharedPreferences by lazy { context.getSharedPreferences(FILENAME, Context.MODE_PRIVATE) }
 
     @UiThread
     override fun onCreate(owner: LifecycleOwner) {

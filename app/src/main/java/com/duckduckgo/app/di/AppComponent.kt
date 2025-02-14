@@ -23,9 +23,7 @@ import com.duckduckgo.app.browser.favicon.FaviconModule
 import com.duckduckgo.app.browser.rating.di.RatingModule
 import com.duckduckgo.app.email.di.EmailModule
 import com.duckduckgo.app.global.DuckDuckGoApplication
-import com.duckduckgo.app.global.exception.UncaughtExceptionModule
 import com.duckduckgo.app.onboarding.di.OnboardingModule
-import com.duckduckgo.app.onboarding.di.WelcomePageModule
 import com.duckduckgo.app.surrogates.di.ResourceSurrogateModule
 import com.duckduckgo.app.usage.di.AppUsageModule
 import com.duckduckgo.di.scopes.AppScope
@@ -36,11 +34,11 @@ import com.duckduckgo.widget.SearchWidget
 import com.squareup.anvil.annotations.MergeComponent
 import dagger.BindsInstance
 import dagger.Component
+import dagger.SingleInstanceIn
 import dagger.android.AndroidInjector
+import javax.inject.Named
 import kotlinx.coroutines.CoroutineScope
 import retrofit2.Retrofit
-import javax.inject.Named
-import dagger.SingleInstanceIn
 
 @SingleInstanceIn(AppScope::class)
 @MergeComponent(
@@ -59,20 +57,17 @@ import dagger.SingleInstanceIn
         ResourceSurrogateModule::class,
         NotificationModule::class,
         OnboardingModule::class,
-        VariantModule::class,
         FaviconModule::class,
         PrivacyModule::class,
         WidgetModule::class,
         RatingModule::class,
         AppUsageModule::class,
         FileModule::class,
-        UncaughtExceptionModule::class,
         CoroutinesModule::class,
         CertificateTrustedStoreModule::class,
-        WelcomePageModule::class,
         FormatterModule::class,
         EmailModule::class,
-    ]
+    ],
 )
 interface AppComponent : AndroidInjector<DuckDuckGoApplication> {
 

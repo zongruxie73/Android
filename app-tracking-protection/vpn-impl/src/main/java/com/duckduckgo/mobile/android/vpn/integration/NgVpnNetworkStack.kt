@@ -16,75 +16,66 @@
 
 package com.duckduckgo.mobile.android.vpn.integration
 
-import android.content.Context
 import android.os.ParcelFileDescriptor
 import android.util.LruCache
 import com.duckduckgo.app.di.AppCoroutineScope
-import com.duckduckgo.app.global.DispatcherProvider
-import com.duckduckgo.app.utils.ConflatedJob
 import com.duckduckgo.appbuildconfig.api.AppBuildConfig
-import com.duckduckgo.appbuildconfig.api.isInternalBuild
+import com.duckduckgo.common.utils.DispatcherProvider
 import com.duckduckgo.di.scopes.VpnScope
-import com.duckduckgo.mobile.android.vpn.apps.VpnExclusionList
-import com.duckduckgo.mobile.android.vpn.dao.VpnAddressLookup
-import com.duckduckgo.mobile.android.vpn.model.TrackingApp
-import com.duckduckgo.mobile.android.vpn.model.VpnTracker
+import com.duckduckgo.mobile.android.app.tracking.AppTrackerDetector
+import com.duckduckgo.mobile.android.vpn.AppTpVpnFeature
+import com.duckduckgo.mobile.android.vpn.apps.TrackingProtectionAppsRepository
+import com.duckduckgo.mobile.android.vpn.feature.AppTpLocalFeature
+import com.duckduckgo.mobile.android.vpn.network.DnsProvider
 import com.duckduckgo.mobile.android.vpn.network.VpnNetworkStack
-import com.duckduckgo.mobile.android.vpn.processor.requestingapp.AppNameResolver
-import com.duckduckgo.mobile.android.vpn.processor.tcp.tracker.AppTrackerRecorder
-import com.duckduckgo.mobile.android.vpn.service.TrackerBlockingVpnService
-import com.duckduckgo.mobile.android.vpn.store.VpnDatabase
-import com.duckduckgo.mobile.android.vpn.trackers.AppTrackerRepository
-import com.duckduckgo.mobile.android.vpn.trackers.AppTrackerType
+import com.duckduckgo.mobile.android.vpn.network.VpnNetworkStack.VpnTunnelConfig
+import com.duckduckgo.mobile.android.vpn.pixels.DeviceShieldPixels
+import com.duckduckgo.mobile.android.vpn.state.VpnStateMonitor.VpnStopReason
 import com.duckduckgo.vpn.network.api.*
 import com.squareup.anvil.annotations.ContributesBinding
+import com.squareup.anvil.annotations.ContributesMultibinding
 import dagger.Lazy
 import dagger.SingleInstanceIn
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import timber.log.Timber
+import java.lang.IllegalStateException
+import java.net.InetAddress
 import javax.inject.Inject
-import kotlin.random.Random
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import logcat.LogPriority
+import logcat.asLog
+import logcat.logcat
 
 private const val LRU_CACHE_SIZE = 2048
+private const val EMFILE_ERRNO = 24
 
-@ContributesBinding(
+@ContributesMultibinding(
     scope = VpnScope::class,
-    boundType = VpnNetworkStack::class
+    boundType = VpnNetworkStack::class,
 )
 @ContributesBinding(
     scope = VpnScope::class,
-    boundType = VpnNetworkCallback::class
+    boundType = VpnNetworkCallback::class,
 )
 @SingleInstanceIn(VpnScope::class)
 class NgVpnNetworkStack @Inject constructor(
-    private val context: Context,
     private val appBuildConfig: AppBuildConfig,
     private val vpnNetwork: Lazy<VpnNetwork>,
-    private val appTrackerRepository: AppTrackerRepository,
-    private val appNameResolver: AppNameResolver,
-    private val appTrackerRecorder: AppTrackerRecorder,
-    @AppCoroutineScope private val appCoroutineScope: CoroutineScope,
+    private val runtime: Runtime,
+    private val appTrackerDetector: AppTrackerDetector,
+    private val trackingProtectionAppsRepository: TrackingProtectionAppsRepository,
+    private val appTpLocalFeature: AppTpLocalFeature,
+    private val deviceShieldPixels: DeviceShieldPixels,
+    @AppCoroutineScope private val coroutineScope: CoroutineScope,
     private val dispatcherProvider: DispatcherProvider,
-    vpnDatabase: VpnDatabase,
+    private val dnsProvider: DnsProvider,
 ) : VpnNetworkStack, VpnNetworkCallback {
-
-    private val addressLookupDao = vpnDatabase.vpnAddressLookupDao()
-
-    private val packageManager = context.packageManager
-    private val vpnAppTrackerBlockingDao = vpnDatabase.vpnAppTrackerBlockingDao()
 
     private var tunnelThread: Thread? = null
     private var jniContext = 0L
     private val jniLock = Any()
     private val addressLookupLruCache = LruCache<String, String>(LRU_CACHE_SIZE)
-    // cache packageId -> app name
-    private val appNamesCache = LruCache<String, AppNameResolver.OriginatingApp>(100)
-    private val periodicCachePersisterJob = ConflatedJob()
 
-    override val name: String = "ng"
+    override val name: String = AppTpVpnFeature.APPTP_VPN.featureName
 
     override fun onCreateVpn(): Result<Unit> {
         val vpnNetwork = vpnNetwork.safeGet().getOrElse { return Result.failure(it) }
@@ -97,209 +88,195 @@ class NgVpnNetworkStack @Inject constructor(
                 vpnNetwork.destroy(jniContext)
                 jniContext = 0
             }
-
         }
         jniContext = vpnNetwork.create()
 
         return Result.success(Unit)
     }
 
+    override suspend fun onPrepareVpn(): Result<VpnTunnelConfig> {
+        fun getDns(): Set<InetAddress> {
+            val privateDns = dnsProvider.getPrivateDns()
+            if (privateDns.isNotEmpty()) {
+                // when private DNS is defined we don't want to define any DNS
+                return emptySet()
+            }
+
+            val targetModels = listOf(
+                "moto g play",
+                "moto g stylus 5G",
+                "moto g(60)",
+                "moto g(7) power",
+                "FIG-LX1",
+                "moto g 5G",
+                "moto g pure",
+                "moto g power",
+            )
+            val model = appBuildConfig.model
+            if (targetModels.any { model.lowercase().contains(it.lowercase()) }) {
+                // else return default system dns
+                return dnsProvider.getSystemDns().toSet()
+            }
+
+            return emptySet()
+        }
+
+        return Result.success(
+            VpnTunnelConfig(
+                mtu = vpnNetwork.get().mtu(),
+                addresses = mapOf(
+                    InetAddress.getByName("10.0.0.2") to 32,
+                    InetAddress.getByName("fd00:1:fd00:1:fd00:1:fd00:1") to 128, // Add IPv6 Unique Local Address
+                ),
+                dns = getDns(),
+                searchDomains = dnsProvider.getSearchDomains(),
+                customDns = emptySet(),
+                routes = emptyMap(),
+                appExclusionList = trackingProtectionAppsRepository.getExclusionAppsList().toSet(),
+            ),
+        )
+    }
+
     override fun onStartVpn(tunfd: ParcelFileDescriptor): Result<Unit> {
-        fun populateLruInMemoryCache() {
-            val cachedEntries = addressLookupDao.getAll()
-            Timber.d("Warming address lookup cache with ${cachedEntries.size} entries")
-            cachedEntries.forEach { entry ->
-                addressLookupLruCache.put(entry.address, entry.domain)
-            }
-        }
-
-        fun startPeriodicCachePersistJob() {
-            periodicCachePersisterJob += appCoroutineScope.launch(dispatcherProvider.io()) {
-                while (isActive) {
-                    delay(Random.nextLong(300_000, 600_000))
-                    persistCacheToDisk()
-                }
-            }
-        }
-
-        populateLruInMemoryCache()
-        startPeriodicCachePersistJob()
         return startNative(tunfd.fd)
     }
 
-    private fun persistCacheToDisk() {
-        addressLookupDao.deleteAll()
-        addressLookupLruCache.snapshot().forEach { (key, value) ->
-            Timber.d("Persisting to address lookup cache $key -> $value")
-            addressLookupDao.insert(VpnAddressLookup(key, value))
-        }
-    }
-
-    override fun onStopVpn(): Result<Unit> {
-
-        periodicCachePersisterJob.cancel()
-        persistCacheToDisk()
+    override fun onStopVpn(reason: VpnStopReason): Result<Unit> {
         return stopNative()
     }
 
     override fun onDestroyVpn(): Result<Unit> {
         val vpnNetwork = vpnNetwork.safeGet().getOrElse { return Result.failure(it) }
 
-        synchronized(jniLock) {
-            vpnNetwork.destroy(jniContext)
-            jniContext = 0
+        if (jniContext != 0L) {
+            synchronized(jniLock) {
+                vpnNetwork.destroy(jniContext)
+                jniContext = 0
+                logcat { "VPN network destroyed" }
+            }
+        } else {
+            logcat { "VPN network already destroyed...noop" }
         }
         vpnNetwork.addCallback(null)
 
         return Result.success(Unit)
     }
 
-    override fun mtu(): Int {
-        return vpnNetwork.get().mtu()
-    }
-
     override fun onExit(reason: String) {
-        Timber.w("Native exit reason=$reason")
-        // restart the VPN
-        appCoroutineScope.launch {
-            TrackerBlockingVpnService.restartVpnService(context, forceGc = true)
+        logcat(LogPriority.WARN) { "Native exit reason=$reason" }
+
+        fun killProcess() {
+            runtime.exit(0)
         }
+        // restart the VPN. We kill process to also avoid any memory leak in the native layer
+        killProcess()
     }
 
-    override fun onError(errorCode: Int, message: String) {
-        Timber.w("onError $errorCode:$message")
+    override fun onError(
+        errorCode: Int,
+        message: String,
+    ) {
+        fun Int.isEmfile(): Boolean {
+            return this == EMFILE_ERRNO
+        }
+
+        logcat(LogPriority.WARN) { "onError $errorCode:$message" }
+
+        if (errorCode.isEmfile()) {
+            onExit(message)
+        }
     }
 
     override fun onDnsResolved(dnsRR: DnsRR) {
         addressLookupLruCache.put(dnsRR.resource, dnsRR.qName)
-        Timber.w("dnsResolved called for $dnsRR")
-    }
-
-    override fun onSniResolved(sniRR: SniRR) {
-        addressLookupLruCache.put(sniRR.resource, sniRR.name)
-        Timber.w("sniResolved called for ${sniRR.name} / ${sniRR.resource}")
+        logcat { "dnsResolved called for $dnsRR" }
     }
 
     override fun isDomainBlocked(domainRR: DomainRR): Boolean {
-        Timber.w("isDomainBlocked for $domainRR")
+        logcat { "isDomainBlocked for $domainRR" }
         return !shouldAllowDomain(domainRR.name, domainRR.uid)
     }
 
+    override fun reportTLSParsingError(errorCode: Int) {
+        logcat { "reportTLSParsingError called with errorCode: $errorCode" }
+        coroutineScope.launch(dispatcherProvider.io()) {
+            deviceShieldPixels.reportTLSParsingError(errorCode)
+        }
+    }
+
     override fun isAddressBlocked(addressRR: AddressRR): Boolean {
-        val hostname = addressLookupLruCache[addressRR.address] ?: return false
-        val domainAllowed = shouldAllowDomain(hostname, addressRR.uid)
-        Timber.w("isAddressBlocked for $addressRR ($hostname) = ${!domainAllowed}")
-        return !domainAllowed
+        // never blocked based on address because the different domains can point to the same IP address
+        return false
     }
 
-    private fun shouldAllowDomain(name: String, uid: Int): Boolean {
-        val packageId = getPackageIdForUid(uid)
+    private fun shouldAllowDomain(
+        name: String,
+        uid: Int,
+    ): Boolean {
+        val tracker = appTrackerDetector.evaluate(name, uid)
+        logcat { "shouldAllowDomain for $name ($uid) = $tracker" }
 
-        if (VpnExclusionList.isDdgApp(packageId)) {
-            Timber.v("shouldAllowDomain: DDG ap is always allowed")
-            return true
-        }
-
-        val type = appTrackerRepository.findTracker(name, packageId)
-
-        if (type is AppTrackerType.ThirdParty && !isTrackerInExceptionRules(packageId = packageId, hostname = name)) {
-            Timber.d("shouldAllowDomain for $name/$packageId = false")
-            val trackingApp = appNamesCache[packageId] ?: appNameResolver.getAppNameForPackageId(packageId)
-            appNamesCache.put(packageId, trackingApp)
-
-            // if the app name is unknown, skip inserting the tracker but still block the tracker
-            if (trackingApp.isUnknown()) return false
-
-            VpnTracker(
-                trackerCompanyId = type.tracker.trackerCompanyId,
-                company = type.tracker.owner.name,
-                companyDisplayName = type.tracker.owner.displayName,
-                domain = type.tracker.hostname,
-                trackingApp = TrackingApp(trackingApp.packageId, trackingApp.appName)
-            ).run {
-                appTrackerRecorder.insertTracker(this)
-            }
-            return false
-        }
-
-        return true
-    }
-
-    private fun isTrackerInExceptionRules(packageId: String, hostname: String): Boolean {
-        return vpnAppTrackerBlockingDao.getRuleByTrackerDomain(hostname)?.let { rule ->
-            Timber.d("isTrackerInExceptionRules: found rule $rule for $hostname")
-            return rule.packageNames.contains(packageId)
-        } ?: false
-    }
-
-    private fun getPackageIdForUid(uid: Int): String {
-        val packages: Array<String>?
-
-        try {
-            packages = packageManager.getPackagesForUid(uid)
-        } catch (e: SecurityException) {
-            Timber.e(e, "Failed to get package ID for UID: $uid due to security violation.")
-            return "unknown"
-        }
-
-        if (packages.isNullOrEmpty()) {
-            Timber.w("Failed to get package ID for UID: $uid")
-            return "unknown"
-        }
-
-        if (packages.size > 1) {
-            val sb = StringBuilder(String.format("Found %d packages for uid:%d", packages.size, uid))
-            packages.forEach {
-                sb.append(String.format("\npackage: %s", it))
-            }
-            Timber.d(sb.toString())
-        }
-
-        return packages.first()
+        return tracker == null
     }
 
     private fun startNative(tunfd: Int): Result<Unit> {
+        if (jniContext == 0L) {
+            logcat(LogPriority.ERROR) { "Trying to start VPN Network without previously creating it" }
+            return Result.failure(IllegalStateException("Trying to start VPN Network without previously creating it"))
+        }
+
         val vpnNetwork = vpnNetwork.safeGet().getOrElse { return Result.failure(it) }
         if (tunnelThread == null) {
-            Timber.d("Start native runtime")
-            val level = if (appBuildConfig.isDebug || appBuildConfig.isInternalBuild()) VpnNetworkLog.DEBUG else VpnNetworkLog.ASSERT
+            logcat { "Start native runtime" }
+            val level = if (appBuildConfig.isDebug || appTpLocalFeature.verboseLogging().isEnabled()) VpnNetworkLog.DEBUG else VpnNetworkLog.ASSERT
+
             vpnNetwork.start(jniContext, level)
 
             tunnelThread = Thread {
-                Timber.d("Running tunnel in context $jniContext")
+                logcat { "Running tunnel in context $jniContext" }
                 vpnNetwork.run(jniContext, tunfd)
-                Timber.w("Tunnel exited")
+                logcat(LogPriority.WARN) { "Tunnel exited" }
                 tunnelThread = null
             }.also { it.start() }
 
-            Timber.d("Started tunnel thread")
+            logcat { "Started tunnel thread" }
         }
 
         return Result.success(Unit)
     }
 
     private fun stopNative(): Result<Unit> {
-        Timber.d("Stop native runtime")
+        logcat { "Stop native runtime" }
         val vpnNetwork = vpnNetwork.safeGet().getOrElse { return Result.failure(it) }
 
         tunnelThread?.let {
-            Timber.d("Stopping tunnel thread")
+            logcat { "Stopping tunnel thread" }
 
-            vpnNetwork.stop(jniContext)
+            // In this case we don't check for jniContext == 0 and rather runCatching because we want to make sure we stop the tunnelThread
+            // if the jniContext is invalid the stop() call should fail, we log and continue
+            runCatching { vpnNetwork.stop(jniContext) }.onFailure {
+                logcat(LogPriority.ERROR) { "Error stopping the VPN network ${it.asLog()}" }
+            }
 
             var thread = tunnelThread
             while (thread != null && thread.isAlive) {
                 try {
-                    Timber.v("Joining tunnel thread context $jniContext")
-                    thread.join()
+                    logcat { "Joining tunnel thread context $jniContext" }
+                    thread.join(5000)
+
+                    // Check if we timed out and are stuck
+                    if (thread.isAlive) {
+                        logcat { "Timed out waiting for tunnel thread" }
+                        deviceShieldPixels.reportTunnelThreadStopTimeout()
+                    }
                 } catch (t: InterruptedException) {
-                    Timber.d("Joined tunnel thread")
+                    logcat { "Interrupted while waiting" }
                 }
                 thread = tunnelThread
             }
             tunnelThread = null
 
-            Timber.d("Stopped tunnel thread")
+            logcat { "Stopped tunnel thread" }
         }
 
         return Result.success(Unit)
@@ -309,7 +286,7 @@ class NgVpnNetworkStack @Inject constructor(
         return runCatching {
             get()
         }.onFailure {
-            Timber.e(it, "Failed to get VpnNetwork")
+            logcat(LogPriority.ERROR) { it.asLog() }
             Result.failure<VpnNetwork>(it)
         }
     }

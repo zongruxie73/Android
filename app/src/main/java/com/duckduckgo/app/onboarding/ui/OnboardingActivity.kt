@@ -22,9 +22,9 @@ import android.os.Bundle
 import com.duckduckgo.anvil.annotations.InjectWith
 import com.duckduckgo.app.browser.BrowserActivity
 import com.duckduckgo.app.browser.databinding.ActivityOnboardingBinding
-import com.duckduckgo.app.global.DuckDuckGoActivity
+import com.duckduckgo.common.ui.DuckDuckGoActivity
+import com.duckduckgo.common.ui.viewbinding.viewBinding
 import com.duckduckgo.di.scopes.ActivityScope
-import com.duckduckgo.mobile.android.ui.viewbinding.viewBinding
 
 @InjectWith(ActivityScope::class)
 class OnboardingActivity : DuckDuckGoActivity() {
@@ -53,7 +53,7 @@ class OnboardingActivity : DuckDuckGoActivity() {
         }
     }
 
-    fun onOnboardingDone() {
+    private fun onOnboardingDone() {
         viewModel.onOnboardingDone()
         startActivity(BrowserActivity.intent(this@OnboardingActivity))
         finish()
@@ -69,6 +69,7 @@ class OnboardingActivity : DuckDuckGoActivity() {
     }
 
     override fun onBackPressed() {
+        super.onBackPressed()
         val currentPage = viewPager.currentItem
         if (currentPage == 0) {
             finish()

@@ -16,9 +16,10 @@
 
 package com.duckduckgo.app.global.file
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.duckduckgo.common.utils.DispatcherProvider
 import java.io.File
+import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 interface FileDeleter {
 
@@ -30,7 +31,7 @@ interface FileDeleter {
      */
     suspend fun deleteContents(
         parentDirectory: File,
-        excludedFiles: List<String> = emptyList()
+        excludedFiles: List<String> = emptyList(),
     )
 
     /**
@@ -43,33 +44,37 @@ interface FileDeleter {
      */
     suspend fun deleteFilesFromDirectory(
         parentDirectory: File,
-        files: List<String>
+        files: List<String>,
     )
 }
 
-class AndroidFileDeleter : FileDeleter {
+class AndroidFileDeleter(private val dispatchers: DispatcherProvider) : FileDeleter {
     override suspend fun deleteContents(
         parentDirectory: File,
-        excludedFiles: List<String>
+        excludedFiles: List<String>,
     ) {
-        withContext(Dispatchers.IO) {
-            val files = parentDirectory.listFiles() ?: return@withContext
-            val filesToDelete = files.filterNot { excludedFiles.contains(it.name) }
-            filesToDelete.forEach { it.deleteRecursively() }
+        withContext(dispatchers.io()) {
+            runCatching {
+                val files = parentDirectory.listFiles() ?: return@withContext
+                val filesToDelete = files.filterNot { excludedFiles.contains(it.name) }
+                filesToDelete.forEach { it.deleteRecursively() }
+            }.onFailure {
+                Timber.e(it, "Failed to delete contents of directory: %s", parentDirectory.absolutePath)
+            }
         }
     }
 
     override suspend fun deleteDirectory(directoryToDelete: File) {
-        withContext(Dispatchers.IO) {
+        withContext(dispatchers.io()) {
             directoryToDelete.deleteRecursively()
         }
     }
 
     override suspend fun deleteFilesFromDirectory(
         parentDirectory: File,
-        files: List<String>
+        files: List<String>,
     ) {
-        withContext(Dispatchers.IO) {
+        withContext(dispatchers.io()) {
             val allFiles = parentDirectory.listFiles() ?: return@withContext
             val filesToDelete = allFiles.filter { files.contains(it.name) }
             filesToDelete.forEach { it.deleteRecursively() }

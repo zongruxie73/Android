@@ -16,25 +16,28 @@
 
 package com.duckduckgo.privacy.config.impl.features.amplinks
 
-import com.duckduckgo.app.global.UriString
+import com.duckduckgo.app.browser.UriString
+import com.duckduckgo.app.privacy.db.UserAllowListRepository
 import com.duckduckgo.di.scopes.AppScope
 import com.duckduckgo.feature.toggles.api.FeatureToggle
-import com.duckduckgo.privacy.config.api.PrivacyFeatureName
-import com.duckduckgo.privacy.config.api.AmpLinks
 import com.duckduckgo.privacy.config.api.AmpLinkInfo
 import com.duckduckgo.privacy.config.api.AmpLinkType
+import com.duckduckgo.privacy.config.api.AmpLinks
+import com.duckduckgo.privacy.config.api.PrivacyFeatureName
 import com.duckduckgo.privacy.config.api.UnprotectedTemporary
 import com.duckduckgo.privacy.config.store.features.amplinks.AmpLinksRepository
 import com.squareup.anvil.annotations.ContributesBinding
 import dagger.SingleInstanceIn
 import javax.inject.Inject
+import timber.log.Timber
 
 @ContributesBinding(AppScope::class)
 @SingleInstanceIn(AppScope::class)
 class RealAmpLinks @Inject constructor(
     private val ampLinksRepository: AmpLinksRepository,
     private val featureToggle: FeatureToggle,
-    private val unprotectedTemporary: UnprotectedTemporary
+    private val unprotectedTemporary: UnprotectedTemporary,
+    private val userAllowListRepository: UserAllowListRepository,
 ) : AmpLinks {
 
     private var lastExtractedUrl: String? = null
@@ -42,7 +45,7 @@ class RealAmpLinks @Inject constructor(
     override var lastAmpLinkInfo: AmpLinkInfo? = null
 
     override fun isAnException(url: String): Boolean {
-        return matches(url) || unprotectedTemporary.isAnException(url)
+        return matches(url) || unprotectedTemporary.isAnException(url) || userAllowListRepository.isUrlInUserAllowList(url)
     }
 
     private fun matches(url: String): Boolean {
@@ -87,7 +90,7 @@ class RealAmpLinks @Inject constructor(
         return false
     }
 
-    fun extractCanonical(url: String): String? {
+    private fun extractCanonical(url: String): String? {
         val ampFormat = urlIsExtractableAmpLink(url) ?: return null
         val matchResult = ampFormat.find(url) ?: return null
 
@@ -100,6 +103,21 @@ class RealAmpLinks @Inject constructor(
             destinationUrl = "https://$destinationUrl"
         }
         return destinationUrl
+    }
+
+    override fun processDestinationUrl(initialUrl: String, extractedUrl: String?): String {
+        return if (extractedUrl != null && isValidDestinationUrl(extractedUrl)) {
+            lastAmpLinkInfo = AmpLinkInfo(ampLink = initialUrl)
+            Timber.d("AMP link detection: Success! Loading extracted URL: $extractedUrl")
+            extractedUrl
+        } else {
+            Timber.d("AMP link detection: Failed! Loading initial URL: $initialUrl")
+            initialUrl
+        }
+    }
+
+    private fun isValidDestinationUrl(extractedUrl: String): Boolean {
+        return !isAnException(extractedUrl) && (extractedUrl.startsWith("http") || extractedUrl.startsWith("https"))
     }
 
     private fun urlIsExtractableAmpLink(url: String): Regex? {

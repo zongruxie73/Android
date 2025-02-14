@@ -16,30 +16,57 @@
 
 package com.duckduckgo.app.email
 
+import com.duckduckgo.app.di.AppCoroutineScope
 import com.duckduckgo.app.email.api.EmailService
 import com.duckduckgo.app.email.db.EmailDataStore
-import com.duckduckgo.app.global.DispatcherProvider
+import com.duckduckgo.app.email.sync.*
+import com.duckduckgo.app.pixels.AppPixelName.EMAIL_DISABLED
+import com.duckduckgo.app.pixels.AppPixelName.EMAIL_ENABLED
+import com.duckduckgo.app.statistics.api.BrowserFeatureStateReporterPlugin
+import com.duckduckgo.app.statistics.pixels.Pixel
+import com.duckduckgo.app.statistics.pixels.Pixel.PixelParameter
+import com.duckduckgo.autofill.api.email.EmailManager
+import com.duckduckgo.common.utils.DispatcherProvider
+import com.duckduckgo.common.utils.extensions.toBinaryString
+import com.duckduckgo.di.scopes.AppScope
+import com.squareup.anvil.annotations.ContributesBinding
+import com.squareup.anvil.annotations.ContributesMultibinding
+import dagger.SingleInstanceIn
+import java.text.SimpleDateFormat
+import java.util.*
+import javax.inject.*
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import timber.log.Timber
-import java.text.SimpleDateFormat
-import java.util.*
 
-class AppEmailManager(
+@ContributesMultibinding(scope = AppScope::class, boundType = BrowserFeatureStateReporterPlugin::class)
+@ContributesBinding(scope = AppScope::class, boundType = EmailManager::class)
+@SingleInstanceIn(AppScope::class)
+class AppEmailManager @Inject constructor(
     private val emailService: EmailService,
     private val emailDataStore: EmailDataStore,
+    private val emailSync: EmailSync,
     private val dispatcherProvider: DispatcherProvider,
-    private val appCoroutineScope: CoroutineScope
-) : EmailManager {
+    @AppCoroutineScope private val appCoroutineScope: CoroutineScope,
+    private val pixel: Pixel,
+) : EmailManager, BrowserFeatureStateReporterPlugin {
 
-    private val isSignedInStateFlow = MutableStateFlow(isSignedIn())
+    private val isSignedInStateFlow = MutableStateFlow(false)
     override fun signedInFlow(): StateFlow<Boolean> = isSignedInStateFlow.asStateFlow()
 
     override fun getAlias(): String? = consumeAlias()
+
+    init {
+        // first call to isSignedIn() can be expensive and cause ANRs if done on main thread, so we do it on a background thread
+        appCoroutineScope.launch(dispatcherProvider.io()) {
+            isSignedInStateFlow.emit(isSignedIn())
+        }
+        emailSync.registerToRemoteChanges {
+            refreshEmailState()
+        }
+    }
 
     override fun isSignedIn(): Boolean {
         return !emailDataStore.emailToken.isNullOrBlank() && !emailDataStore.emailUsername.isNullOrBlank()
@@ -48,7 +75,7 @@ class AppEmailManager(
     override fun storeCredentials(
         token: String,
         username: String,
-        cohort: String
+        cohort: String,
     ) {
         emailDataStore.cohort = cohort
         emailDataStore.emailToken = token
@@ -56,6 +83,8 @@ class AppEmailManager(
         appCoroutineScope.launch(dispatcherProvider.io()) {
             isSignedInStateFlow.emit(isSignedIn())
             generateNewAlias()
+            pixel.fire(EMAIL_ENABLED)
+            emailSync.onSettingChanged()
         }
     }
 
@@ -63,6 +92,8 @@ class AppEmailManager(
         appCoroutineScope.launch(dispatcherProvider.io()) {
             emailDataStore.clearEmailData()
             isSignedInStateFlow.emit(false)
+            pixel.fire(EMAIL_DISABLED)
+            emailSync.onSettingChanged()
         }
     }
 
@@ -95,6 +126,20 @@ class AppEmailManager(
         }
         val date = formatter.format(Date())
         emailDataStore.lastUsedDate = date
+    }
+
+    override fun getToken(): String? = emailDataStore.emailToken
+
+    private fun refreshEmailState() {
+        Timber.i("Sync-Settings: refreshEmailState()")
+        appCoroutineScope.launch(dispatcherProvider.io()) {
+            isSignedInStateFlow.emit(isSignedIn())
+            if (isSignedIn()) {
+                generateNewAlias()
+            } else {
+                emailDataStore.clearEmailData()
+            }
+        }
     }
 
     private fun consumeAlias(): String? {
@@ -142,5 +187,9 @@ class AppEmailManager(
 
     private fun EmailDataStore.clearNextAlias() {
         nextAlias = null
+    }
+
+    override fun featureStateParams(): Map<String, String> {
+        return mapOf(PixelParameter.EMAIL to isSignedIn().toBinaryString())
     }
 }

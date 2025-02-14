@@ -16,21 +16,24 @@
 
 package com.duckduckgo.app.global.rating
 
-import com.duckduckgo.app.playstore.PlayStoreUtils
 import com.duckduckgo.app.usage.search.SearchCountDao
 import com.duckduckgo.appbuildconfig.api.AppBuildConfig
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.duckduckgo.common.test.CoroutineTestRule
+import com.duckduckgo.common.utils.playstore.PlayStoreUtils
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
-@ExperimentalCoroutinesApi
 @Suppress("RemoveExplicitTypeArguments")
 class InitialPromptTypeDeciderTest {
+
+    @get:Rule
+    val coroutineTestRule: CoroutineTestRule = CoroutineTestRule()
 
     private lateinit var testee: InitialPromptTypeDecider
 
@@ -42,14 +45,13 @@ class InitialPromptTypeDeciderTest {
 
     @Before
     fun setup() = runTest {
-
         testee = InitialPromptTypeDecider(
             playStoreUtils = mockPlayStoreUtils,
             searchCountDao = mockSearchCountDao,
             initialPromptDecider = mockInitialPromptDecider,
             secondaryPromptDecider = mockSecondaryPromptDecider,
-            context = mock(),
-            appBuildConfig = mockAppBuildConfig
+            appBuildConfig = mockAppBuildConfig,
+            dispatchers = coroutineTestRule.testDispatcherProvider,
         )
 
         whenever(mockPlayStoreUtils.isPlayStoreInstalled()).thenReturn(true)
@@ -78,24 +80,11 @@ class InitialPromptTypeDeciderTest {
         assertFirstPrompt(type.promptCount)
     }
 
-    @Test
-    fun whenEnoughSearchesMadeAndFirstPromptShownBeforeThenShouldShowSecondPrompt() = runTest {
-        whenever(mockInitialPromptDecider.shouldShowPrompt()).thenReturn(false)
-        whenever(mockSecondaryPromptDecider.shouldShowPrompt()).thenReturn(true)
-        whenever(mockSearchCountDao.getSearchesMade()).thenReturn(Long.MAX_VALUE)
-        val type = testee.determineInitialPromptType() as AppEnjoymentPromptOptions.ShowEnjoymentPrompt
-        assertSecondPrompt(type.promptCount)
-    }
-
     private fun assertPromptNotShown(prompt: AppEnjoymentPromptOptions) {
         assertTrue(prompt == AppEnjoymentPromptOptions.ShowNothing)
     }
 
     private fun assertFirstPrompt(promptCount: PromptCount) {
         assertEquals(PromptCount.first().value, promptCount.value)
-    }
-
-    private fun assertSecondPrompt(promptCount: PromptCount) {
-        assertEquals(PromptCount.second().value, promptCount.value)
     }
 }

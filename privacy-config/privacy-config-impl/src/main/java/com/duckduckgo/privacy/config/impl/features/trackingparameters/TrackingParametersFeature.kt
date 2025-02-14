@@ -16,15 +16,15 @@
 
 package com.duckduckgo.privacy.config.impl.features.trackingparameters
 
-import com.duckduckgo.privacy.config.api.TrackingParameterException
+import com.duckduckgo.feature.toggles.api.FeatureExceptions.FeatureException
 
 data class TrackingParametersFeature(
     val state: String,
     val minSupportedVersion: Int?,
     val settings: TrackingParametersSettings,
-    val exceptions: List<TrackingParameterException>
+    val exceptions: List<FeatureException>,
 )
 
 data class TrackingParametersSettings(
-    val parameters: List<String>
+    val parameters: List<String>,
 )

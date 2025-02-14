@@ -16,7 +16,7 @@
 
 package com.duckduckgo.downloads.impl
 
-import com.duckduckgo.app.CoroutineTestRule
+import com.duckduckgo.common.test.CoroutineTestRule
 import com.duckduckgo.downloads.api.DownloadsRepository
 import com.duckduckgo.downloads.api.model.DownloadItem
 import com.duckduckgo.downloads.store.DownloadEntity
@@ -24,14 +24,12 @@ import com.duckduckgo.downloads.store.DownloadStatus.FINISHED
 import com.duckduckgo.downloads.store.DownloadStatus.STARTED
 import com.duckduckgo.downloads.store.DownloadsDao
 import com.duckduckgo.downloads.store.DownloadsDatabase
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.*
 
-@ExperimentalCoroutinesApi
 class DefaultDownloadsRepositoryTest {
 
     @get:Rule
@@ -84,13 +82,13 @@ class DefaultDownloadsRepositoryTest {
             repository.update(
                 downloadId = item.downloadId,
                 downloadStatus = updatedStatus,
-                contentLength = updatedContentLength
+                contentLength = updatedContentLength,
             )
 
             verify(mockDb.downloadsDao()).update(
                 downloadId = item.downloadId,
                 downloadStatus = updatedStatus,
-                contentLength = updatedContentLength
+                contentLength = updatedContentLength,
             )
 
             verify(mockUrlFileDownloadCallManager).remove(item.downloadId)
@@ -106,13 +104,13 @@ class DefaultDownloadsRepositoryTest {
             repository.update(
                 downloadId = item.downloadId,
                 downloadStatus = updatedStatus,
-                contentLength = updatedContentLength
+                contentLength = updatedContentLength,
             )
 
             verify(mockDb.downloadsDao()).update(
                 downloadId = item.downloadId,
                 downloadStatus = updatedStatus,
-                contentLength = updatedContentLength
+                contentLength = updatedContentLength,
             )
 
             verifyNoInteractions(mockUrlFileDownloadCallManager)
@@ -128,13 +126,13 @@ class DefaultDownloadsRepositoryTest {
             repository.update(
                 fileName = item.fileName,
                 downloadStatus = updatedStatus,
-                contentLength = updatedContentLength
+                contentLength = updatedContentLength,
             )
 
             verify(mockDb.downloadsDao()).update(
                 fileName = item.fileName,
                 downloadStatus = updatedStatus,
-                contentLength = updatedContentLength
+                contentLength = updatedContentLength,
             )
 
             verifyNoInteractions(mockUrlFileDownloadCallManager)
@@ -150,13 +148,13 @@ class DefaultDownloadsRepositoryTest {
             repository.update(
                 fileName = item.fileName,
                 downloadStatus = updatedStatus,
-                contentLength = updatedContentLength
+                contentLength = updatedContentLength,
             )
 
             verify(mockDb.downloadsDao()).update(
                 fileName = item.fileName,
                 downloadStatus = updatedStatus,
-                contentLength = updatedContentLength
+                contentLength = updatedContentLength,
             )
 
             verifyNoInteractions(mockUrlFileDownloadCallManager)
@@ -220,7 +218,7 @@ class DefaultDownloadsRepositoryTest {
         fileName = "file.jpg",
         contentLength = 100L,
         createdAt = "2022-02-04",
-        filePath = "/"
+        filePath = "/",
     )
 
     private fun otherItem() = DownloadItem(
@@ -229,7 +227,7 @@ class DefaultDownloadsRepositoryTest {
         fileName = "other-file.jpg",
         contentLength = 120L,
         createdAt = "2022-02-06",
-        filePath = "/"
+        filePath = "/",
     )
 
     private fun oneEntity() = DownloadEntity(
@@ -239,7 +237,7 @@ class DefaultDownloadsRepositoryTest {
         fileName = "file.jpg",
         contentLength = 100L,
         createdAt = "2022-02-04",
-        filePath = "/"
+        filePath = "/",
     )
 
     private fun otherEntity() = DownloadEntity(
@@ -249,6 +247,6 @@ class DefaultDownloadsRepositoryTest {
         fileName = "other-file.jpg",
         contentLength = 120L,
         createdAt = "2022-02-06",
-        filePath = "/"
+        filePath = "/",
     )
 }

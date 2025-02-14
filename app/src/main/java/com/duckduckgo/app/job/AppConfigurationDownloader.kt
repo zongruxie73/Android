@@ -16,10 +16,10 @@
 
 package com.duckduckgo.app.job
 
-import com.duckduckgo.app.httpsupgrade.api.HttpsUpgradeDataDownloader
 import com.duckduckgo.app.surrogates.api.ResourceSurrogateListDownloader
 import com.duckduckgo.app.survey.api.SurveyDownloader
 import com.duckduckgo.app.trackerdetection.api.TrackerDataDownloader
+import com.duckduckgo.httpsupgrade.api.HttpsUpgradeDataDownloader
 import io.reactivex.Completable
 import timber.log.Timber
 
@@ -31,7 +31,7 @@ class AppConfigurationDownloader(
     private val trackerDataDownloader: TrackerDataDownloader,
     private val httpsUpgradeDataDownloader: HttpsUpgradeDataDownloader,
     private val resourceSurrogateDownloader: ResourceSurrogateListDownloader,
-    private val surveyDownloader: SurveyDownloader
+    private val surveyDownloader: SurveyDownloader,
 ) : ConfigurationDownloader {
 
     override fun downloadTask(): Completable {
@@ -47,8 +47,8 @@ class AppConfigurationDownloader(
                 clearLegacyLists,
                 surrogatesDownload,
                 httpsUpgradeDownload,
-                surveyDownload
-            )
+                surveyDownload,
+            ),
         ).doOnComplete {
             Timber.i("Download task completed successfully")
         }

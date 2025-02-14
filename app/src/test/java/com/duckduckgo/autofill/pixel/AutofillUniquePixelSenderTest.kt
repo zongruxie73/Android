@@ -17,14 +17,14 @@
 package com.duckduckgo.autofill.pixel
 
 import android.content.Context
-import com.duckduckgo.app.CoroutineTestRule
-import com.duckduckgo.app.global.api.InMemorySharedPreferences
 import com.duckduckgo.app.statistics.pixels.Pixel
-import com.duckduckgo.autofill.pixel.AutofillPixelNames.AUTOFILL_DEVICE_CAPABILITY_DEVICE_AUTH_DISABLED
-import com.duckduckgo.autofill.pixel.AutofillPixelNames.AUTOFILL_DEVICE_CAPABILITY_CAPABLE
-import com.duckduckgo.autofill.pixel.AutofillPixelNames.AUTOFILL_DEVICE_CAPABILITY_SECURE_STORAGE_UNAVAILABLE
-import com.duckduckgo.autofill.pixel.AutofillPixelNames.AUTOFILL_DEVICE_CAPABILITY_SECURE_STORAGE_UNAVAILABLE_AND_DEVICE_AUTH_DISABLED
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.duckduckgo.autofill.impl.pixel.AutofillPixelNames.AUTOFILL_DEVICE_CAPABILITY_CAPABLE
+import com.duckduckgo.autofill.impl.pixel.AutofillPixelNames.AUTOFILL_DEVICE_CAPABILITY_DEVICE_AUTH_DISABLED
+import com.duckduckgo.autofill.impl.pixel.AutofillPixelNames.AUTOFILL_DEVICE_CAPABILITY_SECURE_STORAGE_UNAVAILABLE
+import com.duckduckgo.autofill.impl.pixel.AutofillPixelNames.AUTOFILL_DEVICE_CAPABILITY_SECURE_STORAGE_UNAVAILABLE_AND_DEVICE_AUTH_DISABLED
+import com.duckduckgo.autofill.impl.pixel.AutofillUniquePixelSender
+import com.duckduckgo.common.test.CoroutineTestRule
+import com.duckduckgo.common.test.api.InMemorySharedPreferences
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertFalse
@@ -32,15 +32,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.junit.runner.RunWith
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import org.robolectric.RobolectricTestRunner
 
-@ExperimentalCoroutinesApi
-@RunWith(RobolectricTestRunner::class)
 class AutofillUniquePixelSenderTest {
 
     @get:Rule
@@ -54,7 +49,7 @@ class AutofillUniquePixelSenderTest {
         pixel = mockPixel,
         context = context,
         appCoroutineScope = TestScope(),
-        dispatchers = coroutineTestRule.testDispatcherProvider
+        dispatchers = coroutineTestRule.testDispatcherProvider,
     )
 
     @Before
@@ -96,13 +91,6 @@ class AutofillUniquePixelSenderTest {
     fun whenDeviceAuthDisabledAndSecureStorageIsNotAvailableThenSendCorrectPixel() {
         testee.sendCapabilitiesPixel(secureStorageAvailable = false, deviceAuthAvailable = false)
         verify(mockPixel).fire(AUTOFILL_DEVICE_CAPABILITY_SECURE_STORAGE_UNAVAILABLE_AND_DEVICE_AUTH_DISABLED)
-    }
-
-    private fun verifyNoAutofillCapabilitiesPixelsSent() {
-        verify(mockPixel, never()).fire(AUTOFILL_DEVICE_CAPABILITY_CAPABLE)
-        verify(mockPixel, never()).fire(AUTOFILL_DEVICE_CAPABILITY_DEVICE_AUTH_DISABLED)
-        verify(mockPixel, never()).fire(AUTOFILL_DEVICE_CAPABILITY_SECURE_STORAGE_UNAVAILABLE)
-        verify(mockPixel, never()).fire(AUTOFILL_DEVICE_CAPABILITY_SECURE_STORAGE_UNAVAILABLE_AND_DEVICE_AUTH_DISABLED)
     }
 
     private fun configureSharePreferencesMissingKey() {

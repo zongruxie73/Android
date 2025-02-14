@@ -17,6 +17,7 @@
 package com.duckduckgo.privacy.config.impl.features.gpc
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.duckduckgo.app.privacy.db.UserAllowListRepository
 import com.duckduckgo.feature.toggles.api.FeatureToggle
 import com.duckduckgo.privacy.config.api.GpcException
 import com.duckduckgo.privacy.config.api.GpcHeaderEnabledSite
@@ -25,20 +26,22 @@ import com.duckduckgo.privacy.config.api.UnprotectedTemporary
 import com.duckduckgo.privacy.config.impl.features.gpc.RealGpc.Companion.GPC_HEADER
 import com.duckduckgo.privacy.config.impl.features.gpc.RealGpc.Companion.GPC_HEADER_VALUE
 import com.duckduckgo.privacy.config.store.features.gpc.GpcRepository
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
 import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
 @RunWith(AndroidJUnit4::class)
 class RealGpcTest {
     private val mockGpcRepository: GpcRepository = mock()
     private val mockFeatureToggle: FeatureToggle = mock()
     private val mockUnprotectedTemporary: UnprotectedTemporary = mock()
+    private val mockUserAllowListRepository: UserAllowListRepository = mock()
     lateinit var testee: RealGpc
 
     @Before
@@ -51,7 +54,7 @@ class RealGpcTest {
         whenever(mockGpcRepository.headerEnabledSites).thenReturn(headers)
 
         testee =
-            RealGpc(mockFeatureToggle, mockGpcRepository, mockUnprotectedTemporary)
+            RealGpc(mockFeatureToggle, mockGpcRepository, mockUnprotectedTemporary, mockUserAllowListRepository)
     }
 
     @Test
@@ -121,7 +124,7 @@ class RealGpcTest {
         givenFeatureAndGpcAreEnabled()
 
         assertFalse(
-            testee.canUrlAddHeaders(VALID_CONSUMER_URL, mapOf(GPC_HEADER to GPC_HEADER_VALUE))
+            testee.canUrlAddHeaders(VALID_CONSUMER_URL, mapOf(GPC_HEADER to GPC_HEADER_VALUE)),
         )
     }
 
@@ -197,6 +200,12 @@ class RealGpcTest {
         whenever(mockUnprotectedTemporary.isAnException(VALID_CONSUMER_URL)).thenReturn(true)
 
         assertFalse(testee.canGpcBeUsedByUrl(VALID_CONSUMER_URL))
+    }
+
+    @Test
+    fun whenIsExceptionCalledAndDomainIsInUserAllowListThenReturnTrue() {
+        whenever(mockUserAllowListRepository.isUrlInUserAllowList(anyString())).thenReturn(true)
+        assertTrue(testee.isAnException("test.com"))
     }
 
     private fun givenFeatureAndGpcAreEnabled() {

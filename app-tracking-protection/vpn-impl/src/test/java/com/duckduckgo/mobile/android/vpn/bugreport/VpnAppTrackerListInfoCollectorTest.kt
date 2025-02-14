@@ -17,12 +17,9 @@
 package com.duckduckgo.mobile.android.vpn.bugreport
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.duckduckgo.mobile.android.vpn.apps.AppCategory
-import com.duckduckgo.mobile.android.vpn.apps.AppCategoryDetector
 import com.duckduckgo.mobile.android.vpn.dao.VpnAppTrackerBlockingDao
 import com.duckduckgo.mobile.android.vpn.store.VpnDatabase
 import com.duckduckgo.mobile.android.vpn.trackers.*
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -31,7 +28,6 @@ import org.junit.runner.RunWith
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
-@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(AndroidJUnit4::class)
 class VpnAppTrackerListInfoCollectorTest {
 
@@ -39,7 +35,6 @@ class VpnAppTrackerListInfoCollectorTest {
     private val vpnAppTrackerBlockingDao = mock<VpnAppTrackerBlockingDao>()
 
     private val appTrackerRepository = mock<AppTrackerRepository>()
-    private val appCategoryDetector = mock<AppCategoryDetector>()
 
     private lateinit var collector: VpnAppTrackerListInfoCollector
 
@@ -48,7 +43,7 @@ class VpnAppTrackerListInfoCollectorTest {
         whenever(vpnDatabase.vpnAppTrackerBlockingDao()).thenReturn(vpnAppTrackerBlockingDao)
         whenever(appTrackerRepository.getManualAppExclusionList()).thenReturn(listOf())
 
-        collector = VpnAppTrackerListInfoCollector(vpnDatabase, appTrackerRepository, appCategoryDetector)
+        collector = VpnAppTrackerListInfoCollector(vpnDatabase, appTrackerRepository)
     }
 
     @Test
@@ -56,7 +51,6 @@ class VpnAppTrackerListInfoCollectorTest {
         val jsonObject = collector.collectVpnRelatedState(PACKAGE_ID)
 
         assertEquals("", jsonObject.get("appTrackerListEtag"))
-
     }
 
     @Test
@@ -65,7 +59,6 @@ class VpnAppTrackerListInfoCollectorTest {
         val jsonObject = collector.collectVpnRelatedState(PACKAGE_ID)
 
         assertEquals("etag", jsonObject.get("appTrackerListEtag"))
-
     }
 
     @Test
@@ -73,7 +66,6 @@ class VpnAppTrackerListInfoCollectorTest {
         val jsonObject = collector.collectVpnRelatedState(PACKAGE_ID)
 
         assertEquals("", jsonObject.get("appExclusionListEtag"))
-
     }
 
     @Test
@@ -82,7 +74,6 @@ class VpnAppTrackerListInfoCollectorTest {
         val jsonObject = collector.collectVpnRelatedState(PACKAGE_ID)
 
         assertEquals("etag", jsonObject.get("appExclusionListEtag"))
-
     }
 
     @Test
@@ -90,7 +81,6 @@ class VpnAppTrackerListInfoCollectorTest {
         val jsonObject = collector.collectVpnRelatedState(PACKAGE_ID)
 
         assertEquals("", jsonObject.get("appExceptionRuleListEtag"))
-
     }
 
     @Test
@@ -99,34 +89,6 @@ class VpnAppTrackerListInfoCollectorTest {
         val jsonObject = collector.collectVpnRelatedState(PACKAGE_ID)
 
         assertEquals("etag", jsonObject.get("appExceptionRuleListEtag"))
-
-    }
-
-    @Test
-    fun whenCollectStateAndAppGameAndInExclusionListThenReturnUnprotectedByDefaultTrue() = runTest {
-        whenever(appCategoryDetector.getAppCategory(PACKAGE_ID)).thenReturn(AppCategory.Game)
-        whenever(appTrackerRepository.getAppExclusionList()).thenReturn(listOf(AppTrackerExcludedPackage(PACKAGE_ID)))
-        val jsonObject = collector.collectVpnRelatedState(PACKAGE_ID)
-
-        assertEquals("true", jsonObject.get("reportedAppUnprotectedByDefault"))
-    }
-
-    @Test
-    fun whenCollectStateAndAppInExclusionListThenReturnUnprotectedByDefaultTrue() = runTest {
-        whenever(appCategoryDetector.getAppCategory(PACKAGE_ID)).thenReturn(AppCategory.Undefined)
-        whenever(appTrackerRepository.getAppExclusionList()).thenReturn(listOf(AppTrackerExcludedPackage(PACKAGE_ID)))
-        val jsonObject = collector.collectVpnRelatedState(PACKAGE_ID)
-
-        assertEquals("true", jsonObject.get("reportedAppUnprotectedByDefault"))
-    }
-
-    @Test
-    fun whenCollectStateAndAppGameThenReturnUnprotectedByDefaultTrue() = runTest {
-        whenever(appCategoryDetector.getAppCategory(PACKAGE_ID)).thenReturn(AppCategory.Game)
-        whenever(appTrackerRepository.getAppExclusionList()).thenReturn(listOf())
-        val jsonObject = collector.collectVpnRelatedState(PACKAGE_ID)
-
-        assertEquals("true", jsonObject.get("reportedAppUnprotectedByDefault"))
     }
 
     @Test
@@ -154,5 +116,6 @@ class VpnAppTrackerListInfoCollectorTest {
 
     companion object {
         private const val PACKAGE_ID = "com.package.id"
+        private const val REASON = "UNKNOWN"
     }
 }

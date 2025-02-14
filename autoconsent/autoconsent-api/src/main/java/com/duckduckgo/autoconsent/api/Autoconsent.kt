@@ -24,6 +24,7 @@ interface Autoconsent {
      * This method injects the JS code needed to run autoconsent. It requires a [WebView] instance and the URL where the code will be injected.
      */
     fun injectAutoconsent(webView: WebView, url: String)
+
     /**
      * This method adds the JS interface for autoconsent to create a bridge between JS and our client.
      * It requires a [WebView] instance and an [AutoconsentCallback].
@@ -39,6 +40,11 @@ interface Autoconsent {
      * @return `true` if autoconsent was enabled by the user, `false` otherwise.
      */
     fun isSettingEnabled(): Boolean
+
+    /**
+     * @return `true` if autoconsent is enabled in remote config and enabled by the user, `false` otherwise.
+     */
+    fun isAutoconsentEnabled(): Boolean
 
     /**
      * This method sends and opt out message to autoconsent on the given [WebView] instance to set the opt out mode.
@@ -69,12 +75,12 @@ interface AutoconsentCallback {
     /**
      * This method is called whenever a popup is handled but not for the first time.
      */
-    fun onPopUpHandled()
+    fun onPopUpHandled(isCosmetic: Boolean)
 
     /**
      * This method is called whenever autoconsent has a result to be sent
      */
-    fun onResultReceived(consentManaged: Boolean, optOutFailed: Boolean, selfTestFailed: Boolean)
+    fun onResultReceived(consentManaged: Boolean, optOutFailed: Boolean, selfTestFailed: Boolean, isCosmetic: Boolean?)
 }
 
 /** List of [AutoconsentFeatureName] that belong to the Autoconsent feature */

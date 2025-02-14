@@ -18,40 +18,43 @@ package com.duckduckgo.mobile.android.vpn.ui.onboarding
 
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import com.duckduckgo.app.global.DispatcherProvider
+import com.duckduckgo.data.store.api.SharedPreferencesProvider
 import com.duckduckgo.di.scopes.AppScope
-import com.duckduckgo.mobile.android.vpn.prefs.VpnSharedPreferencesProvider
 import com.squareup.anvil.annotations.ContributesBinding
 import dagger.SingleInstanceIn
-import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 interface VpnStore {
     fun onboardingDidShow()
     fun onboardingDidNotShow()
     fun didShowOnboarding(): Boolean
-    fun resetAppTPManuallyEnablesCounter()
-    fun onAppTPManuallyEnabled()
-    fun getAppTPManuallyEnables(): Int
-    fun onForgetPromoteAlwaysOn()
-    fun userAllowsShowPromoteAlwaysOn(): Boolean
-    suspend fun setAlwaysOn(enabled: Boolean)
-    fun isAlwaysOnEnabled(): Boolean
 
-    companion object {
-        const val ALWAYS_ON_PROMOTION_DELTA = 3
-    }
+    fun didShowAppTpEnabledCta(): Boolean
+    fun appTpEnabledCtaDidShow()
+    fun getAndSetOnboardingSession(): Boolean
+
+    fun dismissNotifyMeInAppTp()
+    fun isNotifyMeInAppTpDismissed(): Boolean
+
+    fun dismissPproUpsellBanner()
+    fun isPproUpsellBannerDismised(): Boolean
 }
 
 @ContributesBinding(AppScope::class)
 @SingleInstanceIn(AppScope::class)
 class SharedPreferencesVpnStore @Inject constructor(
-    private val sharedPreferencesProvider: VpnSharedPreferencesProvider,
-    private val dispatcherProvider: DispatcherProvider,
+    private val sharedPreferencesProvider: SharedPreferencesProvider,
 ) : VpnStore {
 
-    private val preferences: SharedPreferences
-        get() = sharedPreferencesProvider.getSharedPreferences(DEVICE_SHIELD_ONBOARDING_STORE_PREFS, multiprocess = true, migrate = true)
+    private val preferences: SharedPreferences by lazy {
+        sharedPreferencesProvider.getSharedPreferences(
+            DEVICE_SHIELD_ONBOARDING_STORE_PREFS,
+            multiprocess = true,
+            migrate = true,
+        )
+    }
 
     override fun onboardingDidShow() {
         preferences.edit { putBoolean(KEY_DEVICE_SHIELD_ONBOARDING_LAUNCHED, true) }
@@ -65,41 +68,53 @@ class SharedPreferencesVpnStore @Inject constructor(
         return preferences.getBoolean(KEY_DEVICE_SHIELD_ONBOARDING_LAUNCHED, false)
     }
 
-    override fun resetAppTPManuallyEnablesCounter() {
-        preferences.edit(commit = true) { putInt(KEY_DEVICE_SHIELD_MANUALLY_ENABLED, 0) }
+    override fun didShowAppTpEnabledCta(): Boolean {
+        return preferences.getBoolean(KEY_APP_TP_ONBOARDING_VPN_ENABLED_CTA_SHOWN, false)
     }
 
-    override fun onAppTPManuallyEnabled() {
-        preferences.edit(commit = true) { putInt(KEY_DEVICE_SHIELD_MANUALLY_ENABLED, getAppTPManuallyEnables() + 1) }
+    override fun appTpEnabledCtaDidShow() {
+        preferences.edit { putBoolean(KEY_APP_TP_ONBOARDING_VPN_ENABLED_CTA_SHOWN, true) }
     }
 
-    override fun getAppTPManuallyEnables(): Int {
-        return preferences.getInt(KEY_DEVICE_SHIELD_MANUALLY_ENABLED, 0)
+    override fun getAndSetOnboardingSession(): Boolean {
+        fun onOnboardingSessionSet() {
+            val now = Instant.now().toEpochMilli()
+            val expiryTimestamp = now.plus(TimeUnit.HOURS.toMillis(WINDOW_INTERVAL_HOURS))
+            preferences.edit { putLong(KEY_APP_TP_ONBOARDING_BANNER_EXPIRY_TIMESTAMP, expiryTimestamp) }
+        }
+
+        val expiryTimestamp = preferences.getLong(KEY_APP_TP_ONBOARDING_BANNER_EXPIRY_TIMESTAMP, -1)
+        if (expiryTimestamp == -1L) {
+            onOnboardingSessionSet()
+            return true
+        }
+        return Instant.now().toEpochMilli() < expiryTimestamp
     }
 
-    override fun onForgetPromoteAlwaysOn() {
-        preferences.edit(commit = true) { putBoolean(KEY_PROMOTE_ALWAYS_ON_DIALOG_ALLOWED, false) }
+    override fun dismissNotifyMeInAppTp() {
+        preferences.edit { putBoolean(KEY_NOTIFY_ME_IN_APP_TP_DISMISSED, true) }
     }
 
-    override fun userAllowsShowPromoteAlwaysOn(): Boolean {
-        return preferences.getBoolean(KEY_PROMOTE_ALWAYS_ON_DIALOG_ALLOWED, true)
+    override fun isNotifyMeInAppTpDismissed(): Boolean {
+        return preferences.getBoolean(KEY_NOTIFY_ME_IN_APP_TP_DISMISSED, false)
     }
 
-    override suspend fun setAlwaysOn(enabled: Boolean) = withContext(dispatcherProvider.io()) {
-        preferences.edit(commit = true) { putBoolean(KEY_ALWAYS_ON_MODE_ENABLED, enabled) }
+    override fun dismissPproUpsellBanner() {
+        preferences.edit { putBoolean(KEY_PPRO_UPSELL_BANNER_DISMISSED, true) }
     }
 
-    override fun isAlwaysOnEnabled(): Boolean {
-        return preferences.getBoolean(KEY_ALWAYS_ON_MODE_ENABLED, false)
+    override fun isPproUpsellBannerDismised(): Boolean {
+        return preferences.getBoolean(KEY_PPRO_UPSELL_BANNER_DISMISSED, false)
     }
 
     companion object {
         private const val DEVICE_SHIELD_ONBOARDING_STORE_PREFS = "com.duckduckgo.android.atp.onboarding.store"
 
         private const val KEY_DEVICE_SHIELD_ONBOARDING_LAUNCHED = "KEY_DEVICE_SHIELD_ONBOARDING_LAUNCHED"
-        private const val KEY_DEVICE_SHIELD_MANUALLY_ENABLED = "KEY_DEVICE_SHIELD_MANUALLY_ENABLED"
-        private const val KEY_PROMOTE_ALWAYS_ON_DIALOG_ALLOWED = "KEY_PROMOTE_ALWAYS_ON_DIALOG_ALLOWED"
-
-        private const val KEY_ALWAYS_ON_MODE_ENABLED = "KEY_ALWAYS_ON_MODE_ENABLED"
+        private const val KEY_APP_TP_ONBOARDING_VPN_ENABLED_CTA_SHOWN = "KEY_APP_TP_ONBOARDING_VPN_ENABLED_CTA_SHOWN"
+        private const val KEY_APP_TP_ONBOARDING_BANNER_EXPIRY_TIMESTAMP = "KEY_APP_TP_ONBOARDING_BANNER_EXPIRY_TIMESTAMP"
+        private const val KEY_NOTIFY_ME_IN_APP_TP_DISMISSED = "KEY_NOTIFY_ME_IN_APP_TP_DISMISSED"
+        private const val KEY_PPRO_UPSELL_BANNER_DISMISSED = "KEY_PPRO_UPSELL_BANNER_DISMISSED"
+        private const val WINDOW_INTERVAL_HOURS = 24L
     }
 }

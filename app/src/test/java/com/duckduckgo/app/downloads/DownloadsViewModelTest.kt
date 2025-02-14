@@ -19,22 +19,25 @@ package com.duckduckgo.app.downloads
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.cash.turbine.test
-import com.duckduckgo.app.CoroutineTestRule
 import com.duckduckgo.app.browser.R
-import com.duckduckgo.app.global.R as CommonR
 import com.duckduckgo.app.downloads.DownloadViewItem.Empty
 import com.duckduckgo.app.downloads.DownloadViewItem.Header
 import com.duckduckgo.app.downloads.DownloadViewItem.Item
+import com.duckduckgo.app.downloads.DownloadViewItem.NotifyMe
 import com.duckduckgo.app.downloads.DownloadsViewModel.Command.CancelDownload
 import com.duckduckgo.app.downloads.DownloadsViewModel.Command.DisplayMessage
 import com.duckduckgo.app.downloads.DownloadsViewModel.Command.DisplayUndoMessage
 import com.duckduckgo.app.downloads.DownloadsViewModel.Command.OpenFile
 import com.duckduckgo.app.downloads.DownloadsViewModel.Command.ShareFile
-import com.duckduckgo.app.global.formatters.time.RealTimeDiffFormatter
+import com.duckduckgo.common.test.CoroutineTestRule
+import com.duckduckgo.common.utils.R as CommonR
+import com.duckduckgo.common.utils.formatters.time.RealTimeDiffFormatter
+import com.duckduckgo.common.utils.formatters.time.TimeDiffFormatter
 import com.duckduckgo.downloads.api.DownloadsRepository
 import com.duckduckgo.downloads.api.model.DownloadItem
 import com.duckduckgo.downloads.store.DownloadStatus.FINISHED
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -42,18 +45,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mockito.kotlin.verify
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.robolectric.annotation.Config
-import org.threeten.bp.LocalDateTime
 
 @RunWith(AndroidJUnit4::class)
-@ExperimentalCoroutinesApi
 @Config(manifest = Config.NONE)
 class DownloadsViewModelTest {
 
-    @ExperimentalCoroutinesApi
     @get:Rule
     var coroutineRule = CoroutineTestRule()
 
@@ -64,7 +64,7 @@ class DownloadsViewModelTest {
     private val testee: DownloadsViewModel by lazy {
         val model =
             DownloadsViewModel(
-                RealTimeDiffFormatter(context),
+                FakeTimeDiffFormatter(TODAY, RealTimeDiffFormatter(context)),
                 mockDownloadsRepository,
                 coroutineRule.testDispatcherProvider,
             )
@@ -72,13 +72,13 @@ class DownloadsViewModelTest {
     }
 
     @Test
-    fun whenDownloadsCalledAndNoDownloadsThenViewStateEmittedWithEmptyViewItem() = runTest {
+    fun whenNoDownloadsAndVisibilityChangedCalledWithValueFalseThenViewStateEmittedWithEmptyItem() = runTest {
+        val visible = false
         val list = emptyList<DownloadItem>()
         whenever(mockDownloadsRepository.getDownloadsAsFlow()).thenReturn(flowOf(list))
+        testee.onItemVisibilityChanged(visible)
 
-        testee.downloads()
-
-        testee.viewState().test {
+        testee.viewState.test {
             val items = awaitItem().downloadItems
             assertEquals(1, items.size)
             assertTrue(items[0] is Empty)
@@ -86,13 +86,28 @@ class DownloadsViewModelTest {
     }
 
     @Test
-    fun whenDownloadsCalledAndOneDownloadThenViewStateEmittedWithOneItem() = runTest {
+    fun whenNoDownloadsAndVisibilityChangedCalledWithValueTrueThenViewStateEmittedWithNotifyMeAndEmptyItems() = runTest {
+        val visible = true
+        val list = emptyList<DownloadItem>()
+        whenever(mockDownloadsRepository.getDownloadsAsFlow()).thenReturn(flowOf(list))
+        testee.onItemVisibilityChanged(visible)
+
+        testee.viewState.test {
+            val items = awaitItem().downloadItems
+            assertEquals(2, items.size)
+            assertTrue(items[0] is NotifyMe)
+            assertTrue(items[1] is Empty)
+        }
+    }
+
+    @Test
+    fun whenOneDownloadAndVisibilityChangedCalledWithValueFalseThenViewStateEmittedWithHeaderAndOneItem() = runTest {
+        val visible = false
         val list = listOf(oneItem())
         whenever(mockDownloadsRepository.getDownloadsAsFlow()).thenReturn(flowOf(list))
+        testee.onItemVisibilityChanged(visible)
 
-        testee.downloads()
-
-        testee.viewState().test {
+        testee.viewState.test {
             val items = awaitItem().downloadItems
             assertEquals(2, items.size)
             assertTrue(items[0] is Header)
@@ -102,8 +117,27 @@ class DownloadsViewModelTest {
     }
 
     @Test
-    fun whenDownloadsCalledAndMultipleDownloadsThenViewStateEmittedWithMultipleItemsAndHeaders() = runTest {
-        val today = LocalDateTime.now()
+    fun whenOneDownloadAndVisibilityChangedCalledWithValueTrueThenViewStateEmittedWithNotifyMeAndHeaderAndOneItem() = runTest {
+        val visible = true
+        val list = listOf(oneItem())
+        whenever(mockDownloadsRepository.getDownloadsAsFlow()).thenReturn(flowOf(list))
+        testee.onItemVisibilityChanged(visible)
+
+        testee.viewState.test {
+            val items = awaitItem().downloadItems
+            assertEquals(3, items.size)
+            assertTrue(items[0] is NotifyMe)
+            assertTrue(items[1] is Header)
+            assertTrue(items[2] is Item)
+            assertEquals(list[0].fileName, (items[2] as Item).downloadItem.fileName)
+        }
+    }
+
+    @Test
+    fun whenMultipleDownloadsAndVisibilityChangedCalledWithValueFalseThenViewStateEmittedWithMultipleItemsAndHeaders() = runTest {
+        val visible = false
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+        val today = LocalDateTime.parse(TODAY, formatter)
         val yesterday = today.minusDays(1)
         val sometimeDuringPastWeek = today.minusDays(6)
         val sometimeDuringPastMonth = today.minusDays(20)
@@ -116,7 +150,7 @@ class DownloadsViewModelTest {
             oneItem().copy(downloadId = 3L, createdAt = sometimeDuringPastWeek.toString()),
             oneItem().copy(downloadId = 4L, createdAt = sometimeDuringPastMonth.toString()),
             oneItem().copy(downloadId = 5L, createdAt = sometimeBeforePastMonth.toString()),
-            oneItem().copy(downloadId = 6L, createdAt = sometimeInThePreviousYear.toString())
+            oneItem().copy(downloadId = 6L, createdAt = sometimeInThePreviousYear.toString()),
         )
 
         whenever(mockDownloadsRepository.getDownloadsAsFlow()).thenReturn(flowOf(downloadList))
@@ -125,10 +159,9 @@ class DownloadsViewModelTest {
         whenever(context.getString(CommonR.string.common_Yesterday)).thenReturn("Yesterday")
         whenever(context.getString(CommonR.string.common_PastWeek)).thenReturn("Past Week")
         whenever(context.getString(CommonR.string.common_PastMonth)).thenReturn("Past Month")
+        testee.onItemVisibilityChanged(visible)
 
-        testee.downloads()
-
-        testee.viewState().test {
+        testee.viewState.test {
             val items = awaitItem().downloadItems
             assertEquals(12, items.size)
 
@@ -175,7 +208,7 @@ class DownloadsViewModelTest {
         testee.commands().test {
             assertEquals(
                 DisplayUndoMessage(messageId = R.string.downloadsAllFilesDeletedMessage, items = itemsToDelete),
-                awaitItem()
+                awaitItem(),
             )
         }
     }
@@ -190,7 +223,7 @@ class DownloadsViewModelTest {
         testee.commands().test {
             assertEquals(
                 DisplayMessage(R.string.downloadsFileNotFoundErrorMessage),
-                awaitItem()
+                awaitItem(),
             )
         }
     }
@@ -209,11 +242,11 @@ class DownloadsViewModelTest {
     fun whenOnQueryTextChangeThenViewStateEmittedWithTwoFilteredItems() = runTest {
         val list = listOf(oneItem(), otherItem())
         whenever(mockDownloadsRepository.getDownloadsAsFlow()).thenReturn(flowOf(list))
-        testee.downloads()
+        testee.onItemVisibilityChanged(false)
 
         testee.onQueryTextChange("other")
 
-        testee.viewState().test {
+        testee.viewState.test {
             val items = awaitItem()
             assertEquals(3, items.downloadItems.size)
             assertEquals(2, items.filteredItems.size)
@@ -227,11 +260,11 @@ class DownloadsViewModelTest {
     fun whenOnQueryTextChangeThenViewStateEmittedWithZeroFilteredItems() = runTest {
         val list = listOf(oneItem(), otherItem())
         whenever(mockDownloadsRepository.getDownloadsAsFlow()).thenReturn(flowOf(list))
-        testee.downloads()
+        testee.onItemVisibilityChanged(false)
 
         testee.onQueryTextChange("text_that_does_not_exist_in_list")
 
-        testee.viewState().test {
+        testee.viewState.test {
             val items = awaitItem()
             assertEquals(3, items.downloadItems.size)
             assertEquals(1, items.filteredItems.size)
@@ -248,7 +281,7 @@ class DownloadsViewModelTest {
         testee.commands().test {
             assertEquals(
                 OpenFile(item),
-                awaitItem()
+                awaitItem(),
             )
         }
     }
@@ -262,7 +295,7 @@ class DownloadsViewModelTest {
         testee.commands().test {
             assertEquals(
                 ShareFile(item),
-                awaitItem()
+                awaitItem(),
             )
         }
     }
@@ -279,9 +312,9 @@ class DownloadsViewModelTest {
                 DisplayUndoMessage(
                     messageId = R.string.downloadsFileDeletedMessage,
                     arg = item.fileName,
-                    items = listOf(item)
+                    items = listOf(item),
                 ),
-                awaitItem()
+                awaitItem(),
             )
         }
     }
@@ -296,7 +329,7 @@ class DownloadsViewModelTest {
         testee.commands().test {
             assertEquals(
                 CancelDownload(item),
-                awaitItem()
+                awaitItem(),
             )
         }
     }
@@ -317,7 +350,7 @@ class DownloadsViewModelTest {
             fileName = "file.jpg",
             contentLength = 100L,
             createdAt = "2022-02-21T10:56:22",
-            filePath = "/"
+            filePath = "/",
         )
 
     private fun otherItem() =
@@ -327,6 +360,39 @@ class DownloadsViewModelTest {
             fileName = "other-file.jpg",
             contentLength = 120L,
             createdAt = "2022-02-21T10:56:22",
-            filePath = "/"
+            filePath = "/",
         )
+
+    companion object {
+        private const val TODAY = "2022-11-02T13:00:00"
+    }
+}
+
+private class FakeTimeDiffFormatter(
+    today: String,
+    private val realTimeDiffFormatter: RealTimeDiffFormatter,
+) : TimeDiffFormatter by realTimeDiffFormatter {
+    private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+    private val formattedToday = LocalDateTime.parse(today, formatter)
+
+    override fun formatTimePassed(endLocalDateTime: LocalDateTime, startLocalDateTime: LocalDateTime): String {
+        return realTimeDiffFormatter.formatTimePassed(
+            endLocalDateTime = formattedToday,
+            startLocalDateTime = startLocalDateTime,
+        )
+    }
+
+    override fun formatTimePassedInDays(endLocalDateTime: LocalDateTime, startLocalDateTime: LocalDateTime): String {
+        return realTimeDiffFormatter.formatTimePassedInDays(
+            endLocalDateTime = formattedToday,
+            startLocalDateTime = startLocalDateTime,
+        )
+    }
+
+    override fun formatTimePassedInDaysWeeksMonthsYears(endLocalDateTime: LocalDateTime, startLocalDateTime: LocalDateTime): String {
+        return realTimeDiffFormatter.formatTimePassedInDaysWeeksMonthsYears(
+            endLocalDateTime = formattedToday,
+            startLocalDateTime = startLocalDateTime,
+        )
+    }
 }

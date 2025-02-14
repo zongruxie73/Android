@@ -22,16 +22,16 @@ import android.content.SharedPreferences
 import androidx.annotation.UiThread
 import androidx.annotation.VisibleForTesting
 import androidx.core.content.edit
-import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.duckduckgo.app.global.intentText
+import com.duckduckgo.app.lifecycle.MainProcessLifecycleObserver
 import com.duckduckgo.app.pixels.AppPixelName
 import com.duckduckgo.app.statistics.pixels.Pixel
 import com.duckduckgo.app.systemsearch.SystemSearchActivity
 import com.duckduckgo.di.scopes.AppScope
 import dagger.SingleInstanceIn
-import timber.log.Timber
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * Stores information about unsent automatic data clearer restart Pixels, detecting if user started the app from an external Intent.
@@ -42,8 +42,8 @@ import javax.inject.Inject
 @SingleInstanceIn(AppScope::class)
 class DataClearerForegroundAppRestartPixel @Inject constructor(
     private val context: Context,
-    private val pixel: Pixel
-) : DefaultLifecycleObserver {
+    private val pixel: Pixel,
+) : MainProcessLifecycleObserver {
     private var detectedUserIntent: Boolean = false
 
     private val pendingAppForegroundRestart: Int
@@ -86,7 +86,7 @@ class DataClearerForegroundAppRestartPixel @Inject constructor(
 
     private fun incrementCount(
         counter: Int,
-        sharedPrefKey: String
+        sharedPrefKey: String,
     ) {
         val updated = counter + 1
         preferences.edit(commit = true) {
@@ -96,7 +96,7 @@ class DataClearerForegroundAppRestartPixel @Inject constructor(
 
     private fun firePendingPixels(
         counter: Int,
-        pixelName: Pixel.PixelName
+        pixelName: Pixel.PixelName,
     ) {
         if (counter > 0) {
             for (i in 1..counter) {

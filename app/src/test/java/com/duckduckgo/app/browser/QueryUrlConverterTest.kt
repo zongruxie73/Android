@@ -21,15 +21,14 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.duckduckgo.app.browser.omnibar.QueryOrigin
 import com.duckduckgo.app.browser.omnibar.QueryUrlConverter
 import com.duckduckgo.app.referral.AppReferrerDataStore
-import com.duckduckgo.app.statistics.VariantManager
 import com.duckduckgo.app.statistics.store.StatisticsDataStore
-import org.mockito.kotlin.any
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
+import com.duckduckgo.experiments.api.VariantManager
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
 @RunWith(AndroidJUnit4::class)
 class QueryUrlConverterTest {
@@ -37,12 +36,17 @@ class QueryUrlConverterTest {
     private var mockStatisticsStore: StatisticsDataStore = mock()
     private val variantManager: VariantManager = mock()
     private val mockAppReferrerDataStore: AppReferrerDataStore = mock()
-    private val requestRewriter = DuckDuckGoRequestRewriter(DuckDuckGoUrlDetector(), mockStatisticsStore, variantManager, mockAppReferrerDataStore)
+    private val requestRewriter = DuckDuckGoRequestRewriter(
+        DuckDuckGoUrlDetectorImpl(),
+        mockStatisticsStore,
+        variantManager,
+        mockAppReferrerDataStore,
+    )
     private val testee: QueryUrlConverter = QueryUrlConverter(requestRewriter)
 
     @Before
     fun setup() {
-        whenever(variantManager.getVariant(any())).thenReturn(VariantManager.DEFAULT_VARIANT)
+        whenever(variantManager.getVariantKey()).thenReturn("")
     }
 
     @Test
@@ -137,7 +141,7 @@ class QueryUrlConverterTest {
 
     private fun assertDuckDuckGoSearchQuery(
         query: String,
-        url: String
+        url: String,
     ) {
         val uri = Uri.parse(url)
         assertEquals("duckduckgo.com", uri.host)

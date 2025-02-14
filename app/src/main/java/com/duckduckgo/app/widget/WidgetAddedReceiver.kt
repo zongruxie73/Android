@@ -22,11 +22,11 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.widget.Toast
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.duckduckgo.app.browser.R
+import com.duckduckgo.app.lifecycle.MainProcessLifecycleObserver
 import com.duckduckgo.app.widget.AppWidgetManagerAddWidgetLauncher.Companion.ACTION_ADD_WIDGET
+import com.duckduckgo.common.utils.extensions.registerNotExportedReceiver
 import com.duckduckgo.di.scopes.AppScope
 import com.squareup.anvil.annotations.ContributesMultibinding
 import dagger.SingleInstanceIn
@@ -34,12 +34,12 @@ import javax.inject.Inject
 
 @ContributesMultibinding(
     scope = AppScope::class,
-    boundType = LifecycleObserver::class,
+    boundType = MainProcessLifecycleObserver::class,
 )
 @SingleInstanceIn(AppScope::class)
 class WidgetAddedReceiver @Inject constructor(
-    private val context: Context
-) : BroadcastReceiver(), DefaultLifecycleObserver {
+    private val context: Context,
+) : BroadcastReceiver(), MainProcessLifecycleObserver {
 
     companion object {
         val IGNORE_MANUFACTURERS_LIST = listOf("samsung", "huawei")
@@ -47,7 +47,7 @@ class WidgetAddedReceiver @Inject constructor(
 
     override fun onCreate(owner: LifecycleOwner) {
         super.onCreate(owner)
-        context.registerReceiver(this, IntentFilter(ACTION_ADD_WIDGET))
+        context.registerNotExportedReceiver(this, IntentFilter(ACTION_ADD_WIDGET))
     }
 
     override fun onDestroy(owner: LifecycleOwner) {
@@ -57,7 +57,7 @@ class WidgetAddedReceiver @Inject constructor(
 
     override fun onReceive(
         context: Context?,
-        intent: Intent?
+        intent: Intent?,
     ) {
         if (!IGNORE_MANUFACTURERS_LIST.contains(Build.MANUFACTURER)) {
             context?.let {

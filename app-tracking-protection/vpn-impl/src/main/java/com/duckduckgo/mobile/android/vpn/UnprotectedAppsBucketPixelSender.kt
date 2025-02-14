@@ -16,26 +16,26 @@
 
 package com.duckduckgo.mobile.android.vpn
 
-import com.duckduckgo.app.global.DispatcherProvider
+import com.duckduckgo.common.utils.DispatcherProvider
 import com.duckduckgo.di.scopes.VpnScope
 import com.duckduckgo.mobile.android.vpn.apps.TrackingProtectionAppsRepository
 import com.duckduckgo.mobile.android.vpn.pixels.DeviceShieldPixels
 import com.duckduckgo.mobile.android.vpn.service.VpnServiceCallbacks
 import com.duckduckgo.mobile.android.vpn.state.VpnStateMonitor
 import com.squareup.anvil.annotations.ContributesMultibinding
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @ContributesMultibinding(
     scope = VpnScope::class,
-    boundType = VpnServiceCallbacks::class
+    boundType = VpnServiceCallbacks::class,
 )
 class UnprotectedAppsBucketPixelSender @Inject constructor(
     private val excludedApps: TrackingProtectionAppsRepository,
     private val deviceShieldPixels: DeviceShieldPixels,
-    private val dispatcherProvider: DispatcherProvider
+    private val dispatcherProvider: DispatcherProvider,
 ) : VpnServiceCallbacks {
 
     override fun onVpnStarted(coroutineScope: CoroutineScope) {

@@ -18,8 +18,8 @@ package com.duckduckgo.downloads.impl
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.cash.turbine.test
-import com.duckduckgo.app.CoroutineTestRule
 import com.duckduckgo.app.statistics.pixels.Pixel
+import com.duckduckgo.common.test.CoroutineTestRule
 import com.duckduckgo.downloads.api.DownloadCommand.ShowDownloadFailedMessage
 import com.duckduckgo.downloads.api.DownloadCommand.ShowDownloadStartedMessage
 import com.duckduckgo.downloads.api.DownloadCommand.ShowDownloadSuccessMessage
@@ -29,7 +29,7 @@ import com.duckduckgo.downloads.api.FileDownloadNotificationManager
 import com.duckduckgo.downloads.api.model.DownloadItem
 import com.duckduckgo.downloads.impl.pixels.DownloadsPixelName
 import com.duckduckgo.downloads.store.DownloadStatus.FINISHED
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import java.io.File
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -40,10 +40,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.*
 import org.robolectric.annotation.Config
-import java.io.File
 
 @RunWith(AndroidJUnit4::class)
-@ExperimentalCoroutinesApi
 @Config(manifest = Config.NONE)
 class FileDownloadCallbackTest {
 
@@ -104,7 +102,7 @@ class FileDownloadCallbackTest {
         verify(mockDownloadsRepository).update(
             downloadId = item.downloadId,
             downloadStatus = FINISHED,
-            contentLength = updatedContentLength
+            contentLength = updatedContentLength,
         )
         verify(mockFileDownloadNotificationManager).showDownloadFinishedNotification(item.downloadId, file, "type")
         callback.commands().test {
@@ -129,7 +127,7 @@ class FileDownloadCallbackTest {
         verify(mockDownloadsRepository).update(
             fileName = item.fileName,
             downloadStatus = FINISHED,
-            contentLength = file.length()
+            contentLength = file.length(),
         )
         verify(mockFileDownloadNotificationManager).showDownloadFinishedNotification(0, file, mimeType)
         callback.commands().test {
@@ -151,7 +149,7 @@ class FileDownloadCallbackTest {
 
         verify(mockPixel).fire(DownloadsPixelName.DOWNLOAD_REQUEST_FAILED)
         verify(mockDownloadsRepository).delete(
-            downloadIdList = listOf(downloadId)
+            downloadIdList = listOf(downloadId),
         )
     }
 
@@ -213,6 +211,6 @@ class FileDownloadCallbackTest {
             fileName = "file.jpg",
             contentLength = 100L,
             createdAt = "2022-02-21T10:56:22",
-            filePath = File("file.jpg").absolutePath
+            filePath = File("file.jpg").absolutePath,
         )
 }

@@ -16,53 +16,48 @@
 
 package com.duckduckgo.cookies.impl.features.firstparty
 
+import android.annotation.SuppressLint
 import android.database.sqlite.SQLiteDatabase
 import android.os.Build
 import android.webkit.CookieManager
-import androidx.room.Room
 import androidx.test.platform.app.InstrumentationRegistry
+import com.duckduckgo.app.fire.FireproofRepository
 import com.duckduckgo.app.fire.WebViewDatabaseLocator
-import com.duckduckgo.app.global.DefaultDispatcherProvider
-import com.duckduckgo.app.global.db.AppDatabase
-import com.duckduckgo.app.global.exception.RootExceptionFinder
 import com.duckduckgo.app.privacy.db.UserAllowListRepository
-import com.duckduckgo.app.statistics.pixels.ExceptionPixel
 import com.duckduckgo.app.statistics.pixels.Pixel
-import com.duckduckgo.cookies.api.CookieException
+import com.duckduckgo.common.utils.DefaultDispatcherProvider
 import com.duckduckgo.cookies.impl.SQLCookieRemover
 import com.duckduckgo.cookies.store.CookiesRepository
 import com.duckduckgo.cookies.store.FirstPartyCookiePolicyEntity
+import com.duckduckgo.feature.toggles.api.FeatureExceptions.FeatureException
 import com.duckduckgo.privacy.config.api.UnprotectedTemporary
-import com.duckduckgo.privacy.config.api.UnprotectedTemporaryException
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.util.Locale
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.*
-import org.threeten.bp.Instant
-import org.threeten.bp.ZoneOffset
-import org.threeten.bp.format.DateTimeFormatter
-import org.threeten.bp.temporal.ChronoUnit
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
-@ExperimentalCoroutinesApi
+@SuppressLint("NoHardcodedCoroutineDispatcher")
 class RealFirstPartyCookiesModifierTest {
 
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
-    private val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
     private val cookieManager = CookieManager.getInstance()
-    private val mockPixel: Pixel = mock()
     private val mockCookiesRepository: CookiesRepository = mock()
     private val mockUnprotectedTemporary: UnprotectedTemporary = mock()
     private val mockUserAllowListRepository: UserAllowListRepository = mock()
+    private val mockFireproofRepository: FireproofRepository = mock()
+    private val mockPixel: Pixel = mock()
     private val webViewDatabaseLocator = WebViewDatabaseLocator(context)
 
     @Before
@@ -72,40 +67,12 @@ class RealFirstPartyCookiesModifierTest {
         whenever(mockCookiesRepository.exceptions).thenReturn(emptyList())
         whenever(mockUnprotectedTemporary.unprotectedTemporaryExceptions).thenReturn(emptyList())
         whenever(mockUserAllowListRepository.domainsInUserAllowList()).thenReturn(emptyList())
+        whenever(mockFireproofRepository.fireproofWebsites()).thenReturn(emptyList())
     }
 
     @After
-    fun after() = runBlocking {
+    fun after() = runTest {
         removeExistingCookies()
-        db.close()
-    }
-
-    @Test
-    fun when1stPartyCookiesExistAndThresholdIsHigherThenNewExpiryDateMatchesMaxAge() = runTest {
-        if (Build.VERSION.SDK_INT == 28) {
-            // these tests fail on API 28 due to WAL. This effectively skips these tests on 28.
-            return@runTest
-        }
-
-        val expectedValue: Long = (
-            (
-                Instant.now()
-                    .plus(MAX_AGE.toLong(), ChronoUnit.SECONDS)
-                    .atOffset(ZoneOffset.UTC)
-                    .toEpochSecond() * MULTIPLIER
-                ) + TIME_1601_IN_MICRO
-            ) * MULTIPLIER
-
-        givenDatabaseWithCookies((THRESHOLD + 1).toLong())
-        val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
-
-        sqlCookieRemover.expireFirstPartyCookies()
-        val expires = queryCookiesDB("example.com")
-
-        assertNotNull(expires)
-        val diff = (expires!! - expectedValue) / 1000000 // initially in microseconds
-        assertTrue(diff > -5L && diff < 5L) // Diff within +- 5 seconds
-
     }
 
     @Test
@@ -115,16 +82,18 @@ class RealFirstPartyCookiesModifierTest {
             return@runTest
         }
 
-        givenDatabaseWithCookies((THRESHOLD).toLong())
-        val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
+        withContext(Dispatchers.Main) {
+            givenDatabaseWithCookies((THRESHOLD).toLong())
+            val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
 
-        val initialValue = queryCookiesDB("example.com")
-        sqlCookieRemover.expireFirstPartyCookies()
-        val finalValue = queryCookiesDB("example.com")
+            val initialValue = queryCookiesDB("example.com")
+            sqlCookieRemover.expireFirstPartyCookies()
+            val finalValue = queryCookiesDB("example.com")
 
-        assertNotNull(initialValue)
-        assertNotNull(finalValue)
-        assertEquals(initialValue, finalValue)
+            assertNotNull(initialValue)
+            assertNotNull(finalValue)
+            assertEquals(initialValue, finalValue)
+        }
     }
 
     @Test
@@ -134,17 +103,19 @@ class RealFirstPartyCookiesModifierTest {
             return@runTest
         }
 
-        givenDatabaseWithCookies((THRESHOLD + 1).toLong())
-        whenever(mockUserAllowListRepository.domainsInUserAllowList()).thenReturn(listOf("example.com"))
-        val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
+        withContext(Dispatchers.Main) {
+            givenDatabaseWithCookies((THRESHOLD + 1).toLong())
+            whenever(mockUserAllowListRepository.domainsInUserAllowList()).thenReturn(listOf("example.com"))
+            val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
 
-        val initialValue = queryCookiesDB("example.com")
-        sqlCookieRemover.expireFirstPartyCookies()
-        val finalValue = queryCookiesDB("example.com")
+            val initialValue = queryCookiesDB("example.com")
+            sqlCookieRemover.expireFirstPartyCookies()
+            val finalValue = queryCookiesDB("example.com")
 
-        assertNotNull(initialValue)
-        assertNotNull(finalValue)
-        assertEquals(initialValue, finalValue)
+            assertNotNull(initialValue)
+            assertNotNull(finalValue)
+            assertEquals(initialValue, finalValue)
+        }
     }
 
     @Test
@@ -154,17 +125,19 @@ class RealFirstPartyCookiesModifierTest {
             return@runTest
         }
 
-        givenDatabaseWithCookies((THRESHOLD + 1).toLong(), "test.example.com")
-        whenever(mockUserAllowListRepository.domainsInUserAllowList()).thenReturn(listOf("example.com"))
-        val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
+        withContext(Dispatchers.Main) {
+            givenDatabaseWithCookies((THRESHOLD + 1).toLong(), "test.example.com")
+            whenever(mockUserAllowListRepository.domainsInUserAllowList()).thenReturn(listOf("example.com"))
+            val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
 
-        val initialValue = queryCookiesDB("test.example.com")
-        sqlCookieRemover.expireFirstPartyCookies()
-        val finalValue = queryCookiesDB("test.example.com")
+            val initialValue = queryCookiesDB("test.example.com")
+            sqlCookieRemover.expireFirstPartyCookies()
+            val finalValue = queryCookiesDB("test.example.com")
 
-        assertNotNull(initialValue)
-        assertNotNull(finalValue)
-        assertEquals(initialValue, finalValue)
+            assertNotNull(initialValue)
+            assertNotNull(finalValue)
+            assertEquals(initialValue, finalValue)
+        }
     }
 
     @Test
@@ -174,17 +147,26 @@ class RealFirstPartyCookiesModifierTest {
             return@runTest
         }
 
-        givenDatabaseWithCookies((THRESHOLD + 1).toLong())
-        whenever(mockUnprotectedTemporary.unprotectedTemporaryExceptions).thenReturn(listOf(UnprotectedTemporaryException("example.com", "reason")))
-        val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
+        withContext(Dispatchers.Main) {
+            givenDatabaseWithCookies((THRESHOLD + 1).toLong())
+            whenever(mockUnprotectedTemporary.unprotectedTemporaryExceptions).thenReturn(
+                listOf(
+                    FeatureException(
+                        "example.com",
+                        "reason",
+                    ),
+                ),
+            )
+            val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
 
-        val initialValue = queryCookiesDB("example.com")
-        sqlCookieRemover.expireFirstPartyCookies()
-        val finalValue = queryCookiesDB("example.com")
+            val initialValue = queryCookiesDB("example.com")
+            sqlCookieRemover.expireFirstPartyCookies()
+            val finalValue = queryCookiesDB("example.com")
 
-        assertNotNull(initialValue)
-        assertNotNull(finalValue)
-        assertEquals(initialValue, finalValue)
+            assertNotNull(initialValue)
+            assertNotNull(finalValue)
+            assertEquals(initialValue, finalValue)
+        }
     }
 
     @Test
@@ -194,29 +176,107 @@ class RealFirstPartyCookiesModifierTest {
             return@runTest
         }
 
-        givenDatabaseWithCookies((THRESHOLD + 1).toLong())
-        whenever(mockCookiesRepository.exceptions).thenReturn(
-            listOf(CookieException(domain = "example.com", reason = "test"))
-        )
-        val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
+        withContext(Dispatchers.Main) {
+            givenDatabaseWithCookies((THRESHOLD + 1).toLong())
+            whenever(mockCookiesRepository.exceptions).thenReturn(
+                listOf(FeatureException(domain = "example.com", reason = "test")),
+            )
+            val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
 
-        val initialValue = queryCookiesDB("example.com")
-        sqlCookieRemover.expireFirstPartyCookies()
-        val finalValue = queryCookiesDB("example.com")
+            val initialValue = queryCookiesDB("example.com")
+            sqlCookieRemover.expireFirstPartyCookies()
+            val finalValue = queryCookiesDB("example.com")
 
-        assertNotNull(initialValue)
-        assertNotNull(finalValue)
-        assertEquals(initialValue, finalValue)
+            assertNotNull(initialValue)
+            assertNotNull(finalValue)
+            assertEquals(initialValue, finalValue)
+        }
     }
 
-    private suspend fun queryCookiesDB(host: String): Long? {
-        return withContext(DefaultDispatcherProvider().io()) {
-            val databasePath: String = webViewDatabaseLocator.getDatabasePath()
-            if (databasePath.isNotEmpty()) {
-                return@withContext query(databasePath, host)
-            }
-            return@withContext null
+    @Test
+    fun when1stPartyCookiesExistAndDomainIsFireproofedThenExpiryDateDoesNotChange() = runTest {
+        if (Build.VERSION.SDK_INT == 28) {
+            // this test fails on API 28 due to WAL. This effectively skips these tests on 28.
+            return@runTest
         }
+
+        withContext(Dispatchers.Main) {
+            givenDatabaseWithCookies((THRESHOLD + 1).toLong())
+            whenever(mockFireproofRepository.fireproofWebsites()).thenReturn(
+                listOf("example.com"),
+            )
+            val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
+
+            val initialValue = queryCookiesDB("example.com")
+            sqlCookieRemover.expireFirstPartyCookies()
+            val finalValue = queryCookiesDB("example.com")
+
+            assertNotNull(initialValue)
+            assertNotNull(finalValue)
+            assertEquals(initialValue, finalValue)
+        }
+    }
+
+    @Test
+    fun when1stPartyCookiesExistAndDomainIsDuckDuckGoThenExpiryDateDoesNotChange() = runTest {
+        if (Build.VERSION.SDK_INT == 28) {
+            // this test fails on API 28 due to WAL. This effectively skips these tests on 28.
+            return@runTest
+        }
+
+        withContext(Dispatchers.Main) {
+            givenDatabaseWithCookies((THRESHOLD + 1).toLong(), "duckduckgo.com")
+            val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
+
+            val initialValue = queryCookiesDB("duckduckgo.com")
+            sqlCookieRemover.expireFirstPartyCookies()
+            val finalValue = queryCookiesDB("duckduckgo.com")
+
+            assertNotNull(initialValue)
+            assertNotNull(finalValue)
+            assertEquals(initialValue, finalValue)
+        }
+    }
+
+    @Test
+    fun when1stPartyCookiesExistAndDomainIsDuckDuckGoSurveysThenExpiryDateDoesNotChange() = runTest {
+        if (Build.VERSION.SDK_INT == 28) {
+            // this test fails on API 28 due to WAL. This effectively skips these tests on 28.
+            return@runTest
+        }
+
+        withContext(Dispatchers.Main) {
+            givenDatabaseWithCookies((THRESHOLD + 1).toLong(), "surveys.duckduckgo.com")
+            val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
+
+            val initialValue = queryCookiesDB("surveys.duckduckgo.com")
+            sqlCookieRemover.expireFirstPartyCookies()
+            val finalValue = queryCookiesDB("surveys.duckduckgo.com")
+
+            assertNotNull(initialValue)
+            assertNotNull(finalValue)
+            assertEquals(initialValue, finalValue)
+        }
+    }
+
+    @Test
+    fun whenFiltersExceedOneThousandQueryShouldNotCrashAndPixelShouldNotBeSent() = runTest {
+        if (Build.VERSION.SDK_INT == 28) {
+            // this test fails on API 28 due to WAL. This effectively skips these tests on 28.
+            return@runTest
+        }
+        givenOneThousandFilters()
+        val sqlCookieRemover = givenRealFirstPartyCookiesModifier()
+        sqlCookieRemover.expireFirstPartyCookies()
+        verifyNoInteractions(mockPixel)
+    }
+
+    private fun queryCookiesDB(host: String): Long? {
+        val databasePath: String = webViewDatabaseLocator.getDatabasePath()
+        if (databasePath.isNotEmpty()) {
+            return query(databasePath, host)
+        }
+        return null
     }
 
     private fun query(
@@ -230,7 +290,10 @@ class RealFirstPartyCookiesModifierTest {
                     SQLCookieRemover.COOKIES_TABLE_NAME,
                     arrayOf("expires_utc"),
                     "host_key ='$host'",
-                    null, null, null, null
+                    null,
+                    null,
+                    null,
+                    null,
                 ).use { cursor ->
                     while (cursor.moveToNext()) {
                         value = cursor.getLong(cursor.getColumnIndex("expires_utc"))
@@ -253,7 +316,8 @@ class RealFirstPartyCookiesModifierTest {
         val time = Instant.now()
             .plus(expiryTimeInSeconds, ChronoUnit.SECONDS)
             .atOffset(ZoneOffset.UTC)
-            .format(DateTimeFormatter.ofPattern("EEE, d MMMM yyyy HH:mm:ss Z"))
+            .format(DateTimeFormatter.ofPattern("EEE, d MMMM yyyy HH:mm:ss Z").withLocale(Locale.US))
+
         cookieManager.setCookie(cookieName, "da=da;expires=$time")
         cookieManager.flush()
     }
@@ -272,9 +336,18 @@ class RealFirstPartyCookiesModifierTest {
             mockUnprotectedTemporary,
             mockUserAllowListRepository,
             webViewDatabaseLocator,
-            ExceptionPixel(mockPixel, RootExceptionFinder()),
-            DefaultDispatcherProvider()
+            mockPixel,
+            mockFireproofRepository,
+            DefaultDispatcherProvider(),
         )
+    }
+
+    private fun givenOneThousandFilters() {
+        val list = mutableListOf<String>()
+        (0..1000).forEach {
+            list.add("Element$it")
+        }
+        whenever(mockUserAllowListRepository.domainsInUserAllowList()).thenReturn(list)
     }
 
     companion object {

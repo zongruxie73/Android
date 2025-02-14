@@ -17,31 +17,41 @@
 package com.duckduckgo.site.permissions.impl
 
 import android.webkit.PermissionRequest
-import com.duckduckgo.app.global.DispatcherProvider
-import com.duckduckgo.app.global.extractDomain
-import com.duckduckgo.di.scopes.ActivityScope
+import com.duckduckgo.app.di.AppCoroutineScope
+import com.duckduckgo.common.utils.DispatcherProvider
+import com.duckduckgo.common.utils.extractDomain
+import com.duckduckgo.di.scopes.AppScope
+import com.duckduckgo.site.permissions.api.SitePermissionsManager.LocationPermissionRequest
+import com.duckduckgo.site.permissions.impl.drmblock.DrmBlock
 import com.duckduckgo.site.permissions.store.SitePermissionsPreferences
 import com.duckduckgo.site.permissions.store.sitepermissions.SitePermissionAskSettingType
-import com.duckduckgo.site.permissions.store.sitepermissions.SitePermissionsEntity
 import com.duckduckgo.site.permissions.store.sitepermissions.SitePermissionsDao
+import com.duckduckgo.site.permissions.store.sitepermissions.SitePermissionsEntity
 import com.duckduckgo.site.permissions.store.sitepermissionsallowed.SitePermissionAllowedEntity
 import com.duckduckgo.site.permissions.store.sitepermissionsallowed.SitePermissionsAllowedDao
 import com.squareup.anvil.annotations.ContributesBinding
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
+import timber.log.Timber
 
 interface SitePermissionsRepository {
     var askCameraEnabled: Boolean
     var askMicEnabled: Boolean
-    fun isDomainAllowedToAsk(url: String, permission: String): Boolean
-    fun isDomainGranted(url: String, tabId: String, permission: String): Boolean
+    var askDrmEnabled: Boolean
+    var askLocationEnabled: Boolean
+    suspend fun isDomainAllowedToAsk(url: String, permission: String): Boolean
+    suspend fun isDomainGranted(url: String, tabId: String, permission: String): Boolean
     fun sitePermissionGranted(url: String, tabId: String, permission: String)
+    fun sitePermissionPermanentlySaved(url: String, permission: String, settingType: SitePermissionAskSettingType)
     fun sitePermissionsWebsitesFlow(): Flow<List<SitePermissionsEntity>>
     fun sitePermissionsForAllWebsites(): List<SitePermissionsEntity>
     fun sitePermissionsAllowedFlow(): Flow<List<SitePermissionAllowedEntity>>
+    fun getDrmForSession(domain: String): Boolean?
+    fun saveDrmForSession(domain: String, allowed: Boolean)
+    fun isDrmBlockedForUrlByConfig(url: String): Boolean
     suspend fun undoDeleteAll(sitePermissions: List<SitePermissionsEntity>, allowedSites: List<SitePermissionAllowedEntity>)
     suspend fun deleteAll()
     suspend fun getSitePermissionsForWebsite(url: String): SitePermissionsEntity?
@@ -49,13 +59,15 @@ interface SitePermissionsRepository {
     suspend fun savePermission(sitePermissionsEntity: SitePermissionsEntity)
 }
 
-@ContributesBinding(ActivityScope::class)
+// Cannot be a Singleton
+@ContributesBinding(AppScope::class)
 class SitePermissionsRepositoryImpl @Inject constructor(
     private val sitePermissionsDao: SitePermissionsDao,
     private val sitePermissionsAllowedDao: SitePermissionsAllowedDao,
     private val sitePermissionsPreferences: SitePermissionsPreferences,
-    private val appCoroutineScope: CoroutineScope,
-    private val dispatcherProvider: DispatcherProvider
+    @AppCoroutineScope private val appCoroutineScope: CoroutineScope,
+    private val dispatcherProvider: DispatcherProvider,
+    private val drmBlock: DrmBlock,
 ) : SitePermissionsRepository {
 
     override var askCameraEnabled: Boolean
@@ -69,7 +81,21 @@ class SitePermissionsRepositoryImpl @Inject constructor(
             sitePermissionsPreferences.askMicEnabled = value
         }
 
-    override fun isDomainAllowedToAsk(url: String, permission: String): Boolean {
+    override var askDrmEnabled: Boolean
+        get() = sitePermissionsPreferences.askDrmEnabled
+        set(value) {
+            sitePermissionsPreferences.askDrmEnabled = value
+        }
+
+    override var askLocationEnabled: Boolean
+        get() = sitePermissionsPreferences.askLocationEnabled
+        set(value) {
+            sitePermissionsPreferences.askLocationEnabled = value
+        }
+
+    private val drmSessions = mutableMapOf<String, Boolean>()
+
+    override suspend fun isDomainAllowedToAsk(url: String, permission: String): Boolean {
         val domain = url.extractDomain() ?: url
         val sitePermissionsForDomain = sitePermissionsDao.getSitePermissionsByDomain(domain)
         return when (permission) {
@@ -85,24 +111,51 @@ class SitePermissionsRepositoryImpl @Inject constructor(
                     askMicEnabled || sitePermissionsForDomain?.askMicSetting == SitePermissionAskSettingType.ALLOW_ALWAYS.name
                 isAskMicDisabled && !isAskMicSettingDenied
             }
+            PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID -> {
+                val isAskDrmSettingDenied = sitePermissionsForDomain?.askDrmSetting == SitePermissionAskSettingType.DENY_ALWAYS.name
+                val isAskDrmDisabled =
+                    askDrmEnabled || sitePermissionsForDomain?.askDrmSetting == SitePermissionAskSettingType.ALLOW_ALWAYS.name
+                isAskDrmDisabled && !isAskDrmSettingDenied
+            }
+            LocationPermissionRequest.RESOURCE_LOCATION_PERMISSION -> {
+                val isLocationSettingDenied = sitePermissionsForDomain?.askLocationSetting == SitePermissionAskSettingType.DENY_ALWAYS.name
+                val isLocationDisabled =
+                    askLocationEnabled || sitePermissionsForDomain?.askLocationSetting == SitePermissionAskSettingType.ALLOW_ALWAYS.name
+                isLocationDisabled && !isLocationSettingDenied
+            }
             else -> false
         }
     }
 
-    override fun isDomainGranted(url: String, tabId: String, permission: String): Boolean {
+    override suspend fun isDomainGranted(url: String, tabId: String, permission: String): Boolean {
         val domain = url.extractDomain() ?: url
         val sitePermissionForDomain = sitePermissionsDao.getSitePermissionsByDomain(domain)
         val permissionAllowedEntity = sitePermissionsAllowedDao.getSitePermissionAllowed(domain, tabId, permission)
+
         val permissionGrantedWithin24h = permissionAllowedEntity?.allowedWithin24h() == true
+        Timber.d("Permissions: permissionGrantedWithin24h $permissionGrantedWithin24h")
 
         return when (permission) {
             PermissionRequest.RESOURCE_VIDEO_CAPTURE -> {
                 val isCameraAlwaysAllowed = sitePermissionForDomain?.askCameraSetting == SitePermissionAskSettingType.ALLOW_ALWAYS.name
+                Timber.d("Permissions: isCameraAlwaysAllowed $isCameraAlwaysAllowed")
                 permissionGrantedWithin24h || isCameraAlwaysAllowed
             }
             PermissionRequest.RESOURCE_AUDIO_CAPTURE -> {
                 val isMicAlwaysAllowed = sitePermissionForDomain?.askMicSetting == SitePermissionAskSettingType.ALLOW_ALWAYS.name
+                Timber.d("Permissions: isMicAlwaysAllowed $isMicAlwaysAllowed")
+
                 permissionGrantedWithin24h || isMicAlwaysAllowed
+            }
+            PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID -> {
+                val isDRMAlwaysAllowed = SitePermissionAskSettingType.ALLOW_ALWAYS.name
+                Timber.d("Permissions: isDRMAlwaysAllowed $isDRMAlwaysAllowed")
+                sitePermissionForDomain?.askDrmSetting == isDRMAlwaysAllowed
+            }
+            LocationPermissionRequest.RESOURCE_LOCATION_PERMISSION -> {
+                val isLocationAlwaysAllowed = sitePermissionForDomain?.askLocationSetting == SitePermissionAskSettingType.ALLOW_ALWAYS.name
+                Timber.d("Permissions: isLocationAlwaysAllowed $isLocationAlwaysAllowed")
+                permissionGrantedWithin24h || isLocationAlwaysAllowed
             }
             else -> false
         }
@@ -119,7 +172,7 @@ class SitePermissionsRepositoryImpl @Inject constructor(
                 domain,
                 tabId,
                 permission,
-                System.currentTimeMillis()
+                System.currentTimeMillis(),
             )
             sitePermissionsAllowedDao.insert(sitePermissionAllowed)
         }
@@ -135,6 +188,18 @@ class SitePermissionsRepositoryImpl @Inject constructor(
 
     override fun sitePermissionsAllowedFlow(): Flow<List<SitePermissionAllowedEntity>> {
         return sitePermissionsAllowedDao.getAllSitesPermissionsAllowedAsFlow()
+    }
+
+    override fun getDrmForSession(domain: String): Boolean? {
+        return drmSessions[domain]
+    }
+
+    override fun saveDrmForSession(domain: String, allowed: Boolean) {
+        drmSessions[domain] = allowed
+    }
+
+    override fun isDrmBlockedForUrlByConfig(url: String): Boolean {
+        return drmBlock.isDrmBlockedForUrl(url)
     }
 
     override suspend fun undoDeleteAll(sitePermissions: List<SitePermissionsEntity>, allowedSites: List<SitePermissionAllowedEntity>) {
@@ -153,9 +218,9 @@ class SitePermissionsRepositoryImpl @Inject constructor(
         sitePermissionsAllowedDao.deleteAll()
     }
 
-    override suspend fun getSitePermissionsForWebsite(url: String): SitePermissionsEntity? {
+    override suspend fun getSitePermissionsForWebsite(domain: String): SitePermissionsEntity? {
         return withContext(dispatcherProvider.io()) {
-            val domain = url.extractDomain() ?: url
+            Timber.d("Permissions: getSitePermissionsForWebsite for $domain")
             sitePermissionsDao.getSitePermissionsByDomain(domain)
         }
     }
@@ -172,6 +237,34 @@ class SitePermissionsRepositoryImpl @Inject constructor(
     override suspend fun savePermission(sitePermissionsEntity: SitePermissionsEntity) {
         withContext(dispatcherProvider.io()) {
             sitePermissionsDao.insert(sitePermissionsEntity)
+        }
+    }
+
+    override fun sitePermissionPermanentlySaved(url: String, permission: String, settingType: SitePermissionAskSettingType) {
+        appCoroutineScope.launch(dispatcherProvider.io()) {
+            val domain = url.extractDomain() ?: url
+
+            val permissionToUpdate = sitePermissionsDao.getSitePermissionsByDomain(domain) ?: SitePermissionsEntity(domain = domain)
+
+            val permanentPermission = when (permission) {
+                PermissionRequest.RESOURCE_VIDEO_CAPTURE -> {
+                    permissionToUpdate.copy(askCameraSetting = settingType.name)
+                }
+                PermissionRequest.RESOURCE_AUDIO_CAPTURE -> {
+                    permissionToUpdate.copy(askMicSetting = settingType.name)
+                }
+                PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID -> {
+                    permissionToUpdate.copy(askDrmSetting = settingType.name)
+                }
+                LocationPermissionRequest.RESOURCE_LOCATION_PERMISSION -> {
+                    permissionToUpdate.copy(askLocationSetting = settingType.name)
+                }
+                else -> {
+                    permissionToUpdate
+                }
+            }
+
+            sitePermissionsDao.insert(permanentPermission)
         }
     }
 }

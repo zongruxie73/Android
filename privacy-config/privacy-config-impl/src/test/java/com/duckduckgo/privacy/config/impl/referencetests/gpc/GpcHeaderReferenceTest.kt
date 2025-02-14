@@ -16,7 +16,8 @@
 
 package com.duckduckgo.privacy.config.impl.referencetests.gpc
 
-import com.duckduckgo.app.FileUtilities
+import com.duckduckgo.app.privacy.db.UserAllowListRepository
+import com.duckduckgo.common.test.FileUtilities
 import com.duckduckgo.feature.toggles.api.FeatureToggle
 import com.duckduckgo.privacy.config.api.Gpc
 import com.duckduckgo.privacy.config.api.GpcException
@@ -30,9 +31,6 @@ import com.duckduckgo.privacy.config.store.GpcExceptionEntity
 import com.duckduckgo.privacy.config.store.features.gpc.GpcRepository
 import com.duckduckgo.privacy.config.store.features.unprotectedtemporary.UnprotectedTemporaryRepository
 import com.duckduckgo.privacy.config.store.toGpcException
-import com.duckduckgo.privacy.config.store.toUnprotectedTemporaryException
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import java.util.concurrent.CopyOnWriteArrayList
@@ -40,6 +38,8 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import org.robolectric.ParameterizedRobolectricTestRunner
 
 @RunWith(ParameterizedRobolectricTestRunner::class)
@@ -48,6 +48,7 @@ class GpcHeaderReferenceTest(private val testCase: TestCase) {
     private val mockUnprotectedTemporaryRepository: UnprotectedTemporaryRepository = mock()
     private val mockGpcRepository: GpcRepository = mock()
     private val mockFeatureToggle: FeatureToggle = mock()
+    private val mockUserAllowListRepository: UserAllowListRepository = mock()
     lateinit var gpc: Gpc
 
     companion object {
@@ -60,8 +61,8 @@ class GpcHeaderReferenceTest(private val testCase: TestCase) {
             val referenceTest = adapter.fromJson(
                 FileUtilities.loadText(
                     GpcHeaderReferenceTest::class.java.classLoader!!,
-                    "reference_tests/gpc/tests.json"
-                )
+                    "reference_tests/gpc/tests.json",
+                ),
             )
             return referenceTest?.gpcHeader?.tests?.filterNot { it.exceptPlatforms.contains("android-browser") } ?: emptyList()
         }
@@ -71,7 +72,7 @@ class GpcHeaderReferenceTest(private val testCase: TestCase) {
     fun setup() {
         whenever(mockGpcRepository.isGpcEnabled()).thenReturn(testCase.gpcUserSettingOn)
         mockGpcPrivacyConfig()
-        gpc = RealGpc(mockFeatureToggle, mockGpcRepository, RealUnprotectedTemporary(mockUnprotectedTemporaryRepository))
+        gpc = RealGpc(mockFeatureToggle, mockGpcRepository, RealUnprotectedTemporary(mockUnprotectedTemporaryRepository), mockUserAllowListRepository)
     }
 
     @Test
@@ -90,8 +91,8 @@ class GpcHeaderReferenceTest(private val testCase: TestCase) {
         val config: JsonPrivacyConfig? = jsonAdapter.fromJson(
             FileUtilities.loadText(
                 javaClass.classLoader!!,
-                "reference_tests/gpc/config_reference.json"
-            )
+                "reference_tests/gpc/config_reference.json",
+            ),
         )
         val gpcAdapter: JsonAdapter<GpcFeature> = moshi.adapter(GpcFeature::class.java)
         val gpcFeature: GpcFeature? = gpcAdapter.fromJson(config?.features?.get("gpc").toString())
@@ -101,9 +102,7 @@ class GpcHeaderReferenceTest(private val testCase: TestCase) {
         }
 
         val isEnabled = gpcFeature?.state == "enabled"
-        val exceptionsUnprotectedTemporary = CopyOnWriteArrayList(
-            config?.unprotectedTemporary?.map { it.toUnprotectedTemporaryException() } ?: emptyList()
-        )
+        val exceptionsUnprotectedTemporary = CopyOnWriteArrayList(config?.unprotectedTemporary.orEmpty())
 
         whenever(mockFeatureToggle.isFeatureEnabled(PrivacyFeatureName.GpcFeatureName.value, isEnabled)).thenReturn(isEnabled)
         whenever(mockGpcRepository.exceptions).thenReturn(CopyOnWriteArrayList(gpcExceptions))
@@ -118,16 +117,16 @@ class GpcHeaderReferenceTest(private val testCase: TestCase) {
         val gpcUserSettingOn: Boolean,
         val expectGPCHeader: Boolean,
         val expectGPCHeaderValue: String,
-        val exceptPlatforms: List<String>
+        val exceptPlatforms: List<String>,
     )
 
     data class GpcHeaderTest(
         val name: String,
         val desc: String,
-        val tests: List<TestCase>
+        val tests: List<TestCase>,
     )
 
     data class ReferenceTest(
-        val gpcHeader: GpcHeaderTest
+        val gpcHeader: GpcHeaderTest,
     )
 }

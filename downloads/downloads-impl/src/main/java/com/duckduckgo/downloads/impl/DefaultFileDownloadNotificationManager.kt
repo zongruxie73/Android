@@ -16,7 +16,6 @@
 
 package com.duckduckgo.downloads.impl
 
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -25,9 +24,11 @@ import android.os.Handler
 import android.os.Looper
 import androidx.annotation.AnyThread
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.FileProvider
 import com.duckduckgo.appbuildconfig.api.AppBuildConfig
 import com.duckduckgo.browser.api.BrowserLifecycleObserver
+import com.duckduckgo.common.utils.notification.checkPermissionAndNotify
 import com.duckduckgo.di.scopes.AppScope
 import com.duckduckgo.downloads.api.FileDownloadNotificationManager
 import com.squareup.anvil.annotations.ContributesBinding
@@ -44,21 +45,22 @@ private const val SUMMARY_ID = 0
 @AnyThread
 @ContributesBinding(
     scope = AppScope::class,
-    boundType = FileDownloadNotificationManager::class
+    boundType = FileDownloadNotificationManager::class,
 )
 @ContributesMultibinding(
     scope = AppScope::class,
-    boundType = BrowserLifecycleObserver::class
+    boundType = BrowserLifecycleObserver::class,
 )
 @SingleInstanceIn(AppScope::class)
 class DefaultFileDownloadNotificationManager @Inject constructor(
-    private val notificationManager: NotificationManager,
+    private val notificationManager: NotificationManagerCompat,
     private val applicationContext: Context,
     private val appBuildConfig: AppBuildConfig,
 ) : FileDownloadNotificationManager, BrowserLifecycleObserver {
 
     // Group notifications are not automatically cleared when the last notification in the group is removed. So we need to do this manually.
     private val groupNotificationsCounter = AtomicReference<Map<Long, String>>(mapOf())
+
     // This is not great but didn't find any other way to do it. When the user closes the app all the downloads are cancelled
     // but the in progress notifications are not dismissed however they should.
     // This will flag when the application is closing so that we don't post any more notifications.
@@ -70,7 +72,7 @@ class DefaultFileDownloadNotificationManager @Inject constructor(
             applicationContext,
             downloadId.toInt(),
             FileDownloadNotificationActionReceiver.cancelDownloadIntent(downloadId),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notification = NotificationCompat.Builder(applicationContext, FileDownloadNotificationChannelType.FILE_DOWNLOADING.id)
             .setPriority(FileDownloadNotificationChannelType.FILE_DOWNLOADING.priority)
@@ -99,8 +101,8 @@ class DefaultFileDownloadNotificationManager @Inject constructor(
         }
 
         notificationManager.apply {
-            notify(downloadId.toInt(), notification)
-            notify(SUMMARY_ID, summary)
+            checkPermissionAndNotify(applicationContext, downloadId.toInt(), notification)
+            checkPermissionAndNotify(applicationContext, SUMMARY_ID, summary)
             groupNotificationsCounter.atomicUpdateAndGet { it.plus(downloadId to filename) }
         }
     }
@@ -127,7 +129,7 @@ class DefaultFileDownloadNotificationManager @Inject constructor(
 
         // we don't want to post any notification while the DDG application is closing
         if (applicationClosing.get()) return
-        notificationManager.notify(downloadId.toInt(), notification)
+        notificationManager.checkPermissionAndNotify(applicationContext, downloadId.toInt(), notification)
     }
 
     @AnyThread
@@ -143,7 +145,7 @@ class DefaultFileDownloadNotificationManager @Inject constructor(
                         applicationContext,
                         downloadId.toInt(),
                         FileDownloadNotificationActionReceiver.retryDownloadIntent(downloadId, fileUrl),
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                     )
                     addAction(R.drawable.ic_file_download_white_24dp, applicationContext.getString(R.string.downloadsRetry), pendingIntent)
                 }
@@ -157,7 +159,7 @@ class DefaultFileDownloadNotificationManager @Inject constructor(
 
         // we don't want to post any notification while the DDG application is closing
         if (applicationClosing.get()) return
-        notificationManager.notify(downloadId.toInt(), notification)
+        notificationManager.checkPermissionAndNotify(applicationContext, downloadId.toInt(), notification)
     }
 
     @AnyThread

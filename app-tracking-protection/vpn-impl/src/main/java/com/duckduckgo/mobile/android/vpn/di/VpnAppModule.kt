@@ -20,12 +20,10 @@ import android.content.Context
 import android.content.res.Resources
 import android.net.ConnectivityManager
 import androidx.room.Room
+import com.duckduckgo.common.utils.DispatcherProvider
 import com.duckduckgo.di.scopes.AppScope
-import com.duckduckgo.mobile.android.vpn.VpnFeaturesRegistry
-import com.duckduckgo.mobile.android.vpn.VpnFeaturesRegistryImpl
-import com.duckduckgo.mobile.android.vpn.VpnServiceWrapper
-import com.duckduckgo.mobile.android.vpn.prefs.VpnSharedPreferencesProvider
-import com.duckduckgo.mobile.android.vpn.remote_config.*
+import com.duckduckgo.mobile.android.vpn.stats.AppTrackerBlockingStatsRepository
+import com.duckduckgo.mobile.android.vpn.stats.RealAppTrackerBlockingStatsRepository
 import com.duckduckgo.mobile.android.vpn.store.*
 import com.duckduckgo.mobile.android.vpn.trackers.AppTrackerRepository
 import com.duckduckgo.mobile.android.vpn.trackers.RealAppTrackerRepository
@@ -48,7 +46,7 @@ object VpnAppModule {
     @Provides
     fun provideVpnDatabaseCallbackProvider(
         context: Context,
-        vpnDatabase: Provider<VpnDatabase>
+        vpnDatabase: Provider<VpnDatabase>,
     ): VpnDatabaseCallbackProvider {
         return VpnDatabaseCallbackProvider(context, vpnDatabase)
     }
@@ -61,7 +59,7 @@ object VpnAppModule {
     @Provides
     fun bindVpnDatabase(
         context: Context,
-        vpnDatabaseCallbackProvider: VpnDatabaseCallbackProvider
+        vpnDatabaseCallbackProvider: VpnDatabaseCallbackProvider,
     ): VpnDatabase {
         return Room.databaseBuilder(context, VpnDatabase::class.java, "vpn.db")
             .enableMultiInstanceInvalidation()
@@ -71,22 +69,10 @@ object VpnAppModule {
             .build()
     }
 
-    @SingleInstanceIn(AppScope::class)
-    @Provides
-    fun provideAppHealthDatabase(context: Context): AppHealthDatabase {
-        return AppHealthDatabase.create(context)
-    }
-
-    @SingleInstanceIn(AppScope::class)
-    @Provides
-    fun provideVpnRemoveConfigDatabase(context: Context): VpnRemoteConfigDatabase {
-        return VpnRemoteConfigDatabase.create(context)
-    }
-
     @Provides
     @SingleInstanceIn(AppScope::class)
     fun provideAppTrackerLoader(
-        vpnDatabase: VpnDatabase
+        vpnDatabase: VpnDatabase,
     ): AppTrackerRepository {
         return RealAppTrackerRepository(vpnDatabase.vpnAppTrackerBlockingDao(), vpnDatabase.vpnSystemAppsOverridesDao())
     }
@@ -98,16 +84,10 @@ object VpnAppModule {
     }
 
     @Provides
-    fun provideAppHealthTriggersRepository(appHealthDatabase: AppHealthDatabase): AppHealthTriggersRepository {
-        return AppHealthTriggersRepositoryImpl(appHealthDatabase)
-    }
-
-    @Provides
-    @SingleInstanceIn(AppScope::class)
-    fun provideVpnFeaturesRegistry(
-        context: Context,
-        sharedPreferencesProvider: VpnSharedPreferencesProvider,
-    ): VpnFeaturesRegistry {
-        return VpnFeaturesRegistryImpl(VpnServiceWrapper(context), sharedPreferencesProvider)
+    fun provideAppTrackerBlockingStatsRepository(
+        vpnDatabase: VpnDatabase,
+        dispatchers: DispatcherProvider,
+    ): AppTrackerBlockingStatsRepository {
+        return RealAppTrackerBlockingStatsRepository(vpnDatabase, dispatchers)
     }
 }

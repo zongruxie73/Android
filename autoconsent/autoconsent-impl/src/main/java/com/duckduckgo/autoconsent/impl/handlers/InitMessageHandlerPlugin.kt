@@ -19,35 +19,32 @@ package com.duckduckgo.autoconsent.impl.handlers
 import android.webkit.WebView
 import androidx.core.net.toUri
 import com.duckduckgo.app.di.AppCoroutineScope
-import com.duckduckgo.app.global.DispatcherProvider
-import com.duckduckgo.app.global.isHttp
-import com.duckduckgo.app.global.isHttps
 import com.duckduckgo.autoconsent.api.AutoconsentCallback
-import com.duckduckgo.autoconsent.impl.JsReader
 import com.duckduckgo.autoconsent.impl.MessageHandlerPlugin
 import com.duckduckgo.autoconsent.impl.adapters.JSONObjectAdapter
-import com.duckduckgo.autoconsent.store.AutoconsentRepository
-import com.duckduckgo.autoconsent.store.AutoconsentSettingsRepository
+import com.duckduckgo.autoconsent.impl.remoteconfig.AutoconsentFeatureSettingsRepository
+import com.duckduckgo.autoconsent.impl.store.AutoconsentSettingsRepository
+import com.duckduckgo.common.utils.DispatcherProvider
+import com.duckduckgo.common.utils.isHttp
+import com.duckduckgo.common.utils.isHttps
 import com.duckduckgo.di.scopes.AppScope
 import com.squareup.anvil.annotations.ContributesMultibinding
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 import timber.log.Timber
-import javax.inject.Inject
 
 @ContributesMultibinding(AppScope::class)
 class InitMessageHandlerPlugin @Inject constructor(
     @AppCoroutineScope val appCoroutineScope: CoroutineScope,
     private val dispatcherProvider: DispatcherProvider,
     private val settingsRepository: AutoconsentSettingsRepository,
-    private val repository: AutoconsentRepository,
+    private val autoconsentFeatureSettingsRepository: AutoconsentFeatureSettingsRepository,
 ) : MessageHandlerPlugin {
 
     private val moshi = Moshi.Builder().add(JSONObjectAdapter()).build()
-    private lateinit var rules: String
 
     override fun process(messageType: String, jsonString: String, webView: WebView, autoconsentCallback: AutoconsentCallback) {
         if (supportedTypes.contains(messageType)) {
@@ -69,15 +66,15 @@ class InitMessageHandlerPlugin @Inject constructor(
                     }
 
                     // Reset site
-                    autoconsentCallback.onResultReceived(consentManaged = false, optOutFailed = false, selfTestFailed = false)
+                    autoconsentCallback.onResultReceived(consentManaged = false, optOutFailed = false, selfTestFailed = false, isCosmetic = false)
 
-                    val disabledCmps = repository.disabledCmps.map { it.name }
+                    val disabledCmps = autoconsentFeatureSettingsRepository.disabledCMPs
                     val autoAction = getAutoAction()
                     val enablePreHide = settingsRepository.userSetting
                     val detectRetries = 20
 
-                    val config = Config(enabled = true, autoAction, disabledCmps, enablePreHide, detectRetries)
-                    val initResp = InitResp(rules = getRules(), config = config)
+                    val config = Config(enabled = true, autoAction, disabledCmps, enablePreHide, detectRetries, enableCosmeticRules = true)
+                    val initResp = InitResp(config = config)
 
                     val response = ReplyHandler.constructReply(getMessage(initResp))
 
@@ -91,7 +88,7 @@ class InitMessageHandlerPlugin @Inject constructor(
 
     override val supportedTypes: List<String> = listOf("init")
 
-    private fun getAutoAction(): String? {
+    private fun getAutoAction(): String {
         // Remove comment to promote feature
         // return if (!settingsRepository.firstPopupHandled) null else "optOut"
         return "optOut"
@@ -107,13 +104,6 @@ class InitMessageHandlerPlugin @Inject constructor(
         return jsonAdapter.toJson(initResp).toString()
     }
 
-    private fun getRules(): JSONObject {
-        if (!this::rules.isInitialized) {
-            rules = JsReader.loadJs("rules.json")
-        }
-        return JSONObject(rules)
-    }
-
     data class InitMessage(val type: String, val url: String)
 
     data class Config(
@@ -121,9 +111,9 @@ class InitMessageHandlerPlugin @Inject constructor(
         val autoAction: String?,
         val disabledCmps: List<String>,
         val enablePrehide: Boolean,
-        val detectRetries: Int
+        val detectRetries: Int,
+        val enableCosmeticRules: Boolean,
     )
 
-    // rules can actually be null, but we will always pass them through
-    data class InitResp(val type: String = "initResp", val config: Config, val rules: JSONObject)
+    data class InitResp(val type: String = "initResp", val config: Config)
 }

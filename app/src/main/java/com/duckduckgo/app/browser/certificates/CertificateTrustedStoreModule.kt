@@ -33,19 +33,25 @@ class CertificateTrustedStoreModule {
     @Provides
     @SingleInstanceIn(AppScope::class)
     fun trustedCertificateStore(
-        letsEncryptCertificateProvider: LetsEncryptCertificateProvider
+        letsEncryptCertificateProvider: LetsEncryptCertificateProvider,
     ): TrustedCertificateStore = TrustedCertificateStoreImpl(letsEncryptCertificateProvider)
 
     @Provides
     @SingleInstanceIn(AppScope::class)
     fun letsEncryptCertificateProvider(
-        context: Context
+        context: Context,
     ): LetsEncryptCertificateProvider = LetsEncryptCertificateProviderImpl(
         setOf(
             IsrgRootX1(context),
             IsrgRootX2(context),
             LetsEncryptR3(context),
-            LetsEncryptE1(context)
-        )
+            LetsEncryptE1(context),
+        ),
     )
+
+    @Provides
+    @SingleInstanceIn(AppScope::class)
+    fun trustedSitesRepository(): BypassedSSLCertificatesRepository {
+        return RealBypassedSSLCertificatesRepository()
+    }
 }

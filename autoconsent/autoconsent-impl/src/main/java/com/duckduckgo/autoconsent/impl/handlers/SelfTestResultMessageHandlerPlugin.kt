@@ -24,8 +24,8 @@ import com.duckduckgo.di.scopes.AppScope
 import com.squareup.anvil.annotations.ContributesMultibinding
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
-import timber.log.Timber
 import javax.inject.Inject
+import timber.log.Timber
 
 @ContributesMultibinding(AppScope::class)
 class SelfTestResultMessageHandlerPlugin @Inject constructor() : MessageHandlerPlugin {
@@ -36,7 +36,7 @@ class SelfTestResultMessageHandlerPlugin @Inject constructor() : MessageHandlerP
         if (supportedTypes.contains(messageType)) {
             try {
                 val message: SelfTestResultMessage = parseMessage(jsonString) ?: return
-                autoconsentCallback.onResultReceived(consentManaged = true, optOutFailed = false, selfTestFailed = message.result)
+                autoconsentCallback.onResultReceived(consentManaged = true, optOutFailed = false, selfTestFailed = message.result, isCosmetic = null)
             } catch (e: Exception) {
                 Timber.d(e.localizedMessage)
             }

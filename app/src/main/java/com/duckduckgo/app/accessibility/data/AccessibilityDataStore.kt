@@ -19,7 +19,7 @@ package com.duckduckgo.app.accessibility.data
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import com.duckduckgo.app.global.DispatcherProvider
+import com.duckduckgo.common.utils.DispatcherProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -37,19 +37,18 @@ interface AccessibilitySettingsDataStore {
 class AccessibilitySettingsSharedPreferences(
     private val context: Context,
     private val dispatcherProvider: DispatcherProvider,
-    private val appCoroutineScope: CoroutineScope
+    private val appCoroutineScope: CoroutineScope,
 ) : AccessibilitySettingsDataStore {
 
     private val accessibilityStateFlow = MutableStateFlow(
         AccessibilitySettings(
             overrideSystemFontSize = false,
             fontSize = FONT_SIZE_DEFAULT,
-            forceZoom = false
-        )
+            forceZoom = false,
+        ),
     )
 
-    private val preferences: SharedPreferences
-        get() = context.getSharedPreferences(FILENAME, Context.MODE_PRIVATE)
+    private val preferences: SharedPreferences by lazy { context.getSharedPreferences(FILENAME, Context.MODE_PRIVATE) }
 
     override val fontSize: Float
         get() {
@@ -108,5 +107,5 @@ class AccessibilitySettingsSharedPreferences(
 data class AccessibilitySettings(
     val overrideSystemFontSize: Boolean,
     val fontSize: Float,
-    val forceZoom: Boolean
+    val forceZoom: Boolean,
 )

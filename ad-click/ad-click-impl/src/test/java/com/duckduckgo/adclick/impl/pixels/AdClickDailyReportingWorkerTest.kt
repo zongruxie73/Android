@@ -19,8 +19,7 @@ package com.duckduckgo.adclick.impl.pixels
 import android.content.Context
 import androidx.work.ListenableWorker
 import androidx.work.testing.TestListenableWorkerBuilder
-import com.duckduckgo.app.CoroutineTestRule
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.duckduckgo.common.test.CoroutineTestRule
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert
 import org.junit.Before
@@ -29,7 +28,6 @@ import org.junit.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 
-@ExperimentalCoroutinesApi
 internal class AdClickDailyReportingWorkerTest {
 
     @get:Rule
@@ -49,6 +47,7 @@ internal class AdClickDailyReportingWorkerTest {
         runTest {
             val worker = TestListenableWorkerBuilder<AdClickDailyReportingWorker>(context = context).build()
             worker.adClickPixels = mockAdClickPixels
+            worker.dispatchers = coroutineRule.testDispatcherProvider
 
             val result = worker.doWork()
 

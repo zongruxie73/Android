@@ -30,7 +30,7 @@ import javax.inject.Inject
 @ContributesMultibinding(AppScope::class)
 class TrackingParametersPlugin @Inject constructor(
     private val trackingParametersRepository: TrackingParametersRepository,
-    private val privacyFeatureTogglesRepository: PrivacyFeatureTogglesRepository
+    private val privacyFeatureTogglesRepository: PrivacyFeatureTogglesRepository,
 ) : PrivacyFeaturePlugin {
 
     override fun store(featureName: String, jsonString: String): Boolean {
@@ -46,7 +46,7 @@ class TrackingParametersPlugin @Inject constructor(
             val trackingParametersFeature: TrackingParametersFeature? = jsonAdapter.fromJson(jsonString)
 
             trackingParametersFeature?.exceptions?.map {
-                exceptions.add(TrackingParameterExceptionEntity(it.domain, it.reason))
+                exceptions.add(TrackingParameterExceptionEntity(it.domain, it.reason.orEmpty()))
             }
 
             trackingParametersFeature?.settings?.parameters?.map {

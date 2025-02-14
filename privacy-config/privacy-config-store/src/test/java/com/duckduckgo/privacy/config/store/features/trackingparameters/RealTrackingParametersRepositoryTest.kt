@@ -16,10 +16,9 @@
 
 package com.duckduckgo.privacy.config.store.features.trackingparameters
 
-import com.duckduckgo.app.CoroutineTestRule
+import com.duckduckgo.common.test.CoroutineTestRule
 import com.duckduckgo.privacy.config.store.*
 import junit.framework.TestCase.assertEquals
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -31,7 +30,6 @@ import org.mockito.kotlin.reset
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
-@ExperimentalCoroutinesApi
 class RealTrackingParametersRepositoryTest {
 
     @get:Rule
@@ -48,7 +46,8 @@ class RealTrackingParametersRepositoryTest {
         testee = RealTrackingParametersRepository(
             mockDatabase,
             TestScope(),
-            coroutineRule.testDispatcherProvider
+            coroutineRule.testDispatcherProvider,
+            isMainProcess = true,
         )
     }
 
@@ -59,10 +58,11 @@ class RealTrackingParametersRepositoryTest {
         testee = RealTrackingParametersRepository(
             mockDatabase,
             TestScope(),
-            coroutineRule.testDispatcherProvider
+            coroutineRule.testDispatcherProvider,
+            isMainProcess = true,
         )
 
-        assertEquals(trackingParameterExceptionEntity.toTrackingParameterException(), testee.exceptions.first())
+        assertEquals(trackingParameterExceptionEntity.toFeatureException(), testee.exceptions.first())
         assertEquals(trackingParameterEntity.parameter, testee.parameters.first().toString())
     }
 
@@ -71,7 +71,8 @@ class RealTrackingParametersRepositoryTest {
         testee = RealTrackingParametersRepository(
             mockDatabase,
             TestScope(),
-            coroutineRule.testDispatcherProvider
+            coroutineRule.testDispatcherProvider,
+            isMainProcess = true,
         )
 
         testee.updateAll(listOf(), listOf())
@@ -86,7 +87,8 @@ class RealTrackingParametersRepositoryTest {
         testee = RealTrackingParametersRepository(
             mockDatabase,
             TestScope(),
-            coroutineRule.testDispatcherProvider
+            coroutineRule.testDispatcherProvider,
+            isMainProcess = true,
         )
         assertEquals(1, testee.exceptions.size)
         assertEquals(1, testee.parameters.size)
@@ -107,11 +109,11 @@ class RealTrackingParametersRepositoryTest {
     companion object {
         val trackingParameterExceptionEntity = TrackingParameterExceptionEntity(
             domain = "https://www.example.com",
-            reason = "reason"
+            reason = "reason",
         )
 
         val trackingParameterEntity = TrackingParameterEntity(
-            parameter = "parameter"
+            parameter = "parameter",
         )
     }
 }

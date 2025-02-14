@@ -17,7 +17,7 @@
 plugins {
     id 'com.android.library'
     id 'kotlin-android'
-    id 'kotlin-kapt'
+    id 'com.google.devtools.ksp'
 }
 
 apply from: "$rootProject.projectDir/gradle/android-library.gradle"
@@ -40,22 +40,21 @@ android {
             includeAndroidResources = true
         }
     }
+    compileOptions {
+        coreLibraryDesugaringEnabled = true
+    }
 }
 
 dependencies {
 
-    implementation project(path: ':common')
+    implementation project(path: ':common-utils')
     implementation project(path: ':vpn-api')
     implementation project(path: ':feature-toggles-api')
     implementation project(path: ':app-build-config-api')
 
-    implementation Kotlin.stdlib.jdk7
     implementation AndroidX.core.ktx
 
-    implementation "com.jakewharton.threetenabp:threetenabp:_"
-    testImplementation "org.threeten:threetenbp:_"
-
-    implementation JakeWharton.timber
+    implementation "com.squareup.logcat:logcat:_"
 
     implementation Square.retrofit2.converter.moshi
 
@@ -65,11 +64,12 @@ dependencies {
     implementation AndroidX.room.ktx
     // need access to Dagger annotations
     implementation Google.dagger
-    kapt AndroidX.room.compiler
+    ksp AndroidX.room.compiler
     testImplementation AndroidX.room.testing
     // multi-process shared preferences
     implementation "com.frybits.harmony:harmony:_"
 
+    testImplementation project(':vpn-store-test')
     testImplementation Testing.junit4
     testImplementation project(path: ':common-test')
     testImplementation "org.mockito.kotlin:mockito-kotlin:_"
@@ -79,4 +79,6 @@ dependencies {
     testImplementation AndroidX.test.ext.junit
 
     androidTestUtil AndroidX.test.orchestrator
+
+    coreLibraryDesugaring Android.tools.desugarJdkLibs
 }

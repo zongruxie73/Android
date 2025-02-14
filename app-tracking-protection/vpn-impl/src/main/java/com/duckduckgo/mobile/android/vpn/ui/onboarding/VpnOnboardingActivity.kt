@@ -17,24 +17,28 @@
 package com.duckduckgo.mobile.android.vpn.ui.onboarding
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
 import android.net.VpnService
-import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
-import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.widget.ViewPager2
-import com.duckduckgo.app.global.DuckDuckGoActivity
-import com.duckduckgo.mobile.android.ui.viewbinding.viewBinding
+import com.duckduckgo.anvil.annotations.ContributeToActivityStarter
 import com.duckduckgo.anvil.annotations.InjectWith
 import com.duckduckgo.appbuildconfig.api.AppBuildConfig
+import com.duckduckgo.browser.api.ui.BrowserScreens.WebViewActivityWithParams
+import com.duckduckgo.common.ui.DuckDuckGoActivity
+import com.duckduckgo.common.ui.view.dialog.TextAlertDialogBuilder
+import com.duckduckgo.common.ui.view.getColorFromAttr
+import com.duckduckgo.common.ui.viewbinding.viewBinding
+import com.duckduckgo.common.utils.DispatcherProvider
+import com.duckduckgo.common.utils.extensions.launchAlwaysOnSystemSettings
 import com.duckduckgo.di.scopes.ActivityScope
+import com.duckduckgo.mobile.android.app.tracking.ui.AppTrackingProtectionScreens.AppTrackerOnboardingActivityWithEmptyParamsParams
 import com.duckduckgo.mobile.android.vpn.AppTpVpnFeature
 import com.duckduckgo.mobile.android.vpn.R
+import com.duckduckgo.mobile.android.vpn.R.string
 import com.duckduckgo.mobile.android.vpn.VpnFeaturesRegistry
 import com.duckduckgo.mobile.android.vpn.databinding.ActivityVpnOnboardingBinding
 import com.duckduckgo.mobile.android.vpn.pixels.DeviceShieldPixels
@@ -43,16 +47,16 @@ import com.duckduckgo.mobile.android.vpn.ui.onboarding.Command.LaunchVPN
 import com.duckduckgo.mobile.android.vpn.ui.onboarding.Command.RequestVPNPermission
 import com.duckduckgo.mobile.android.vpn.ui.onboarding.Command.ShowVpnAlwaysOnConflictDialog
 import com.duckduckgo.mobile.android.vpn.ui.onboarding.Command.ShowVpnConflictDialog
-import com.duckduckgo.mobile.android.vpn.ui.tracker_activity.AppTPVpnConflictDialog
 import com.duckduckgo.mobile.android.vpn.ui.tracker_activity.DeviceShieldTrackerActivity
+import com.duckduckgo.navigation.api.GlobalActivityStarter
+import javax.inject.Inject
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import nl.dionsegijn.konfetti.models.Shape
-import nl.dionsegijn.konfetti.models.Size
-import javax.inject.Inject
+import kotlinx.coroutines.launch
 
 @InjectWith(ActivityScope::class)
-class VpnOnboardingActivity : DuckDuckGoActivity(), AppTPVpnConflictDialog.Listener {
+@ContributeToActivityStarter(AppTrackerOnboardingActivityWithEmptyParamsParams::class)
+class VpnOnboardingActivity : DuckDuckGoActivity() {
 
     @Inject
     lateinit var deviceShieldPixels: DeviceShieldPixels
@@ -61,6 +65,11 @@ class VpnOnboardingActivity : DuckDuckGoActivity(), AppTPVpnConflictDialog.Liste
     lateinit var appBuildConfig: AppBuildConfig
 
     @Inject lateinit var vpnFeaturesRegistry: VpnFeaturesRegistry
+
+    @Inject lateinit var dispatcherProvider: DispatcherProvider
+
+    @Inject
+    lateinit var globalActivityStarter: GlobalActivityStarter
 
     private val viewModel: VpnOnboardingViewModel by bindViewModel()
     private val binding: ActivityVpnOnboardingBinding by viewBinding()
@@ -78,16 +87,24 @@ class VpnOnboardingActivity : DuckDuckGoActivity(), AppTPVpnConflictDialog.Liste
         binding.onboardingPager.adapter = DeviceShieldOnboardingAdapter(viewModel.pages) {
             launchFAQ()
         }
-        binding.onboardingPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-            override fun onPageSelected(position: Int) {
-                showOnboardingPage(position)
-                super.onPageSelected(position)
-            }
-        })
+        binding.onboardingPager.registerOnPageChangeCallback(
+            object : ViewPager2.OnPageChangeCallback() {
+                override fun onPageSelected(position: Int) {
+                    showOnboardingPage(position)
+                    super.onPageSelected(position)
+                }
+            },
+        )
 
         binding.onboardingClose.setOnClickListener {
             close()
         }
+
+        overrideStatusBarColor()
+    }
+
+    private fun overrideStatusBarColor() {
+        window.statusBarColor = getColorFromAttr(com.duckduckgo.mobile.android.R.attr.appTPHeaderBackground)
     }
 
     private fun observeViewModel() {
@@ -98,7 +115,13 @@ class VpnOnboardingActivity : DuckDuckGoActivity(), AppTPVpnConflictDialog.Liste
     }
 
     private fun launchFAQ() {
-        startActivity(DeviceShieldFAQActivity.intent(this))
+        globalActivityStarter.start(
+            this,
+            WebViewActivityWithParams(
+                url = FAQ_WEBSITE,
+                screenTitle = getString(string.atp_FAQActivityTitle),
+            ),
+        )
     }
 
     private fun showOnboardingPage(position: Int) {
@@ -106,14 +129,16 @@ class VpnOnboardingActivity : DuckDuckGoActivity(), AppTPVpnConflictDialog.Liste
             0 -> {
                 showNextPageCTA()
             }
+
             1 -> {
                 showNextPageCTA()
             }
+
             2 -> {
                 showEnableCTA()
             }
-            else -> {} // no-op
 
+            else -> {} // no-op
         }
     }
 
@@ -139,38 +164,13 @@ class VpnOnboardingActivity : DuckDuckGoActivity(), AppTPVpnConflictDialog.Liste
         }
     }
 
-    private fun showEnabledState() {
-        showNextPage()
-        launchKonfetti()
-        binding.onboardingNextCta.setText(R.string.atp_EnabledActivityCTA)
-        binding.onboardingNextCta.setOnClickListener {
-            startActivity(DeviceShieldTrackerActivity.intent(it.context))
-            finish()
-        }
-    }
-
-    private fun launchKonfetti() {
-        val magenta = ResourcesCompat.getColor(getResources(), com.duckduckgo.mobile.android.R.color.magenta, null)
-        val blue = ResourcesCompat.getColor(getResources(), com.duckduckgo.mobile.android.R.color.accentBlue, null)
-        val purple = ResourcesCompat.getColor(getResources(), com.duckduckgo.mobile.android.R.color.purple, null)
-        val green = ResourcesCompat.getColor(getResources(), com.duckduckgo.mobile.android.R.color.green, null)
-        val yellow = ResourcesCompat.getColor(getResources(), com.duckduckgo.mobile.android.R.color.yellow, null)
-
-        val displayWidth = resources.displayMetrics.widthPixels
-
-        binding.deviceShieldKonfetti.build()
-            .addColors(magenta, blue, purple, green, yellow)
-            .setDirection(0.0, 359.0)
-            .setSpeed(1f, 5f)
-            .setFadeOutEnabled(true)
-            .setTimeToLive(2000L)
-            .addShapes(Shape.Rectangle(1f))
-            .addSizes(Size(8))
-            .setPosition(displayWidth / 2f, displayWidth / 2f, -50f, -50f)
-            .streamFor(50, 4000L)
+    private fun launchDeviceShieldTrackerActivity() {
+        startActivity(DeviceShieldTrackerActivity.intent(this))
+        finish()
     }
 
     override fun onBackPressed() {
+        super.onBackPressed()
         // go back to previous screen or get out if first page
         onSupportNavigateUp()
     }
@@ -187,7 +187,7 @@ class VpnOnboardingActivity : DuckDuckGoActivity(), AppTPVpnConflictDialog.Liste
     override fun onActivityResult(
         requestCode: Int,
         resultCode: Int,
-        data: Intent?
+        data: Intent?,
     ) {
         if (requestCode == REQUEST_ASK_VPN_PERMISSION) {
             viewModel.onVPNPermissionResult(resultCode)
@@ -198,8 +198,8 @@ class VpnOnboardingActivity : DuckDuckGoActivity(), AppTPVpnConflictDialog.Liste
     private fun processCommand(command: Command) {
         when (command) {
             is LaunchVPN -> startVpn()
-            is ShowVpnConflictDialog -> launchVPNConflictDialog(false)
-            is ShowVpnAlwaysOnConflictDialog -> launchVPNConflictDialog(true)
+            is ShowVpnConflictDialog -> showVpnConflictDialog()
+            is ShowVpnAlwaysOnConflictDialog -> showAlwaysOnConflictDialog()
             is CheckVPNPermission -> checkVPNPermission()
             is RequestVPNPermission -> obtainVpnRequestPermission(command.vpnIntent)
         }
@@ -210,6 +210,7 @@ class VpnOnboardingActivity : DuckDuckGoActivity(), AppTPVpnConflictDialog.Liste
             is VpnPermissionStatus.Granted -> {
                 startVpn()
             }
+
             is VpnPermissionStatus.Denied -> {
                 viewModel.onVPNPermissionNeeded(permissionStatus.intent)
             }
@@ -230,48 +231,68 @@ class VpnOnboardingActivity : DuckDuckGoActivity(), AppTPVpnConflictDialog.Liste
         startActivityForResult(intent, REQUEST_ASK_VPN_PERMISSION)
     }
 
-    private fun checkVpnPermission(): VpnPermissionStatus {
-        val intent = VpnService.prepare(this)
-        return if (intent == null) {
-            VpnPermissionStatus.Granted
-        } else {
-            VpnPermissionStatus.Denied(intent)
+    private fun startVpn() {
+        lifecycleScope.launch(dispatcherProvider.io()) {
+            vpnFeaturesRegistry.registerFeature(AppTpVpnFeature.APPTP_VPN)
+            launchDeviceShieldTrackerActivity()
+            viewModel.onAppTpEnabled()
         }
     }
 
-    private fun startVpn() {
-        vpnFeaturesRegistry.registerFeature(AppTpVpnFeature.APPTP_VPN)
-        showEnabledState()
-        viewModel.onAppTpEnabled()
-    }
-
-    private fun launchVPNConflictDialog(isAlwaysOn: Boolean) {
+    private fun showVpnConflictDialog() {
         deviceShieldPixels.didShowVpnConflictDialog()
-        val dialog = AppTPVpnConflictDialog.instance(this, isAlwaysOn)
-        dialog.show(
-            supportFragmentManager,
-            AppTPVpnConflictDialog.TAG_VPN_CONFLICT_DIALOG
-        )
+        TextAlertDialogBuilder(this)
+            .setTitle(R.string.atp_VpnConflictDialogTitle)
+            .setMessage(R.string.atp_VpnConflictDialogMessage)
+            .setPositiveButton(R.string.atp_VpnConflictDialogGotIt)
+            .setNegativeButton(R.string.atp_VpnConflictDialogCancel)
+            .addEventListener(
+                object : TextAlertDialogBuilder.EventListener() {
+                    override fun onPositiveButtonClicked() {
+                        onVpnConflictDialogContinue()
+                    }
+
+                    override fun onNegativeButtonClicked() {
+                        onVpnConflictDialogDismiss()
+                    }
+                },
+            )
+            .show()
     }
 
-    override fun onVpnConflictDialogDismiss() {
+    private fun showAlwaysOnConflictDialog() {
+        deviceShieldPixels.didShowVpnConflictDialog()
+        TextAlertDialogBuilder(this)
+            .setTitle(R.string.atp_VpnConflictAlwaysOnDialogTitle)
+            .setMessage(R.string.atp_VpnConflictDialogAlwaysOnMessage)
+            .setPositiveButton(R.string.atp_VpnConflictDialogOpenSettings)
+            .setNegativeButton(R.string.atp_VpnConflictDialogCancel)
+            .addEventListener(
+                object : TextAlertDialogBuilder.EventListener() {
+                    override fun onPositiveButtonClicked() {
+                        onVpnConflictDialogGoToSettings()
+                    }
+
+                    override fun onNegativeButtonClicked() {
+                        onVpnConflictDialogDismiss()
+                    }
+                },
+            )
+            .show()
+    }
+
+    fun onVpnConflictDialogDismiss() {
         deviceShieldPixels.didChooseToDismissVpnConflictDialog()
     }
 
     @SuppressLint("InlinedApi")
-    override fun onVpnConflictDialogGoToSettings() {
+    fun onVpnConflictDialogGoToSettings() {
         deviceShieldPixels.didChooseToOpenSettingsFromVpnConflictDialog()
 
-        val intent = if (appBuildConfig.sdkInt >= Build.VERSION_CODES.N) {
-            Intent(Settings.ACTION_VPN_SETTINGS)
-        } else {
-            Intent("android.net.vpn.SETTINGS")
-        }
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        startActivity(intent)
+        this.launchAlwaysOnSystemSettings()
     }
 
-    override fun onVpnConflictDialogContinue() {
+    fun onVpnConflictDialogContinue() {
         deviceShieldPixels.didChooseToContinueFromVpnConflictDialog()
         checkVPNPermission()
     }
@@ -283,9 +304,6 @@ class VpnOnboardingActivity : DuckDuckGoActivity(), AppTPVpnConflictDialog.Liste
 
     companion object {
         private const val REQUEST_ASK_VPN_PERMISSION = 101
-
-        fun intent(context: Context): Intent {
-            return Intent(context, VpnOnboardingActivity::class.java)
-        }
+        private const val FAQ_WEBSITE = "https://help.duckduckgo.com/duckduckgo-help-pages/p-app-tracking-protection/what-is-app-tracking-protection/"
     }
 }

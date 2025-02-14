@@ -16,15 +16,10 @@
 
 package com.duckduckgo.privacy.config.store.features.unprotectedtemporary
 
-import com.duckduckgo.app.CoroutineTestRule
+import com.duckduckgo.common.test.CoroutineTestRule
 import com.duckduckgo.privacy.config.store.PrivacyConfigDatabase
 import com.duckduckgo.privacy.config.store.UnprotectedTemporaryEntity
-import com.duckduckgo.privacy.config.store.toUnprotectedTemporaryException
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.reset
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.duckduckgo.privacy.config.store.toFeatureException
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
@@ -32,8 +27,11 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.ArgumentMatchers
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.reset
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
-@ExperimentalCoroutinesApi
 class RealUnprotectedTemporaryRepositoryTest {
 
     @get:Rule var coroutineRule = CoroutineTestRule()
@@ -48,7 +46,10 @@ class RealUnprotectedTemporaryRepositoryTest {
         whenever(mockDatabase.unprotectedTemporaryDao()).thenReturn(mockUnprotectedTemporaryDao)
         testee =
             RealUnprotectedTemporaryRepository(
-                mockDatabase, TestScope(), coroutineRule.testDispatcherProvider
+                mockDatabase,
+                TestScope(),
+                coroutineRule.testDispatcherProvider,
+                isMainProcess = true,
             )
     }
 
@@ -58,10 +59,13 @@ class RealUnprotectedTemporaryRepositoryTest {
 
         testee =
             RealUnprotectedTemporaryRepository(
-                mockDatabase, TestScope(), coroutineRule.testDispatcherProvider
+                mockDatabase,
+                TestScope(),
+                coroutineRule.testDispatcherProvider,
+                isMainProcess = true,
             )
 
-        assertEquals(unprotectedTemporaryException.toUnprotectedTemporaryException(), testee.exceptions.first())
+        assertEquals(unprotectedTemporaryException.toFeatureException(), testee.exceptions.first())
     }
 
     @Test
@@ -69,7 +73,10 @@ class RealUnprotectedTemporaryRepositoryTest {
         runTest {
             testee =
                 RealUnprotectedTemporaryRepository(
-                    mockDatabase, TestScope(), coroutineRule.testDispatcherProvider
+                    mockDatabase,
+                    TestScope(),
+                    coroutineRule.testDispatcherProvider,
+                    isMainProcess = true,
                 )
 
             testee.updateAll(listOf())
@@ -83,7 +90,10 @@ class RealUnprotectedTemporaryRepositoryTest {
             givenUnprotectedTemporaryDaoContainsExceptions()
             testee =
                 RealUnprotectedTemporaryRepository(
-                    mockDatabase, TestScope(), coroutineRule.testDispatcherProvider
+                    mockDatabase,
+                    TestScope(),
+                    coroutineRule.testDispatcherProvider,
+                    isMainProcess = true,
                 )
             assertEquals(1, testee.exceptions.size)
             reset(mockUnprotectedTemporaryDao)

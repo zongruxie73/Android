@@ -20,15 +20,15 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.content.Context
 import android.util.AttributeSet
-import android.widget.RelativeLayout
+import android.widget.FrameLayout
 import com.duckduckgo.app.browser.databinding.ViewTabSwitcherButtonBinding
-import com.duckduckgo.mobile.android.ui.viewbinding.viewBinding
+import com.duckduckgo.common.ui.viewbinding.viewBinding
 
 class TabSwitcherButton @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
-    defStyleAttr: Int = 0
-) : RelativeLayout(context, attrs, defStyleAttr) {
+    defStyleAttr: Int = 0,
+) : FrameLayout(context, attrs, defStyleAttr) {
 
     private val binding: ViewTabSwitcherButtonBinding by viewBinding()
 

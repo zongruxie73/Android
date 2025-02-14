@@ -17,18 +17,16 @@
 package com.duckduckgo.app.feedback.ui.negative.mainreason
 
 import android.os.Bundle
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.duckduckgo.anvil.annotations.InjectWith
 import com.duckduckgo.app.browser.R
 import com.duckduckgo.app.browser.databinding.ContentFeedbackNegativeDisambiguationMainReasonBinding
 import com.duckduckgo.app.feedback.ui.common.FeedbackFragment
-import com.duckduckgo.app.feedback.ui.common.FeedbackItemDecoration
 import com.duckduckgo.app.feedback.ui.negative.FeedbackType.MainReason
 import com.duckduckgo.app.feedback.ui.negative.FeedbackTypeDisplay
 import com.duckduckgo.app.feedback.ui.negative.FeedbackTypeDisplay.FeedbackTypeMainReasonDisplay
+import com.duckduckgo.common.ui.viewbinding.viewBinding
 import com.duckduckgo.di.scopes.FragmentScope
-import com.duckduckgo.mobile.android.ui.viewbinding.viewBinding
 
 @InjectWith(FragmentScope::class)
 class MainReasonNegativeFeedbackFragment : FeedbackFragment(R.layout.content_feedback_negative_disambiguation_main_reason) {
@@ -47,16 +45,17 @@ class MainReasonNegativeFeedbackFragment : FeedbackFragment(R.layout.content_fee
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        recyclerAdapter = MainReasonAdapter(object : (FeedbackTypeMainReasonDisplay) -> Unit {
-            override fun invoke(reason: FeedbackTypeMainReasonDisplay) {
-                listener?.userSelectedNegativeFeedbackMainReason(reason.mainReason)
-            }
-        })
+        recyclerAdapter = MainReasonAdapter(
+            object : (FeedbackTypeMainReasonDisplay) -> Unit {
+                override fun invoke(reason: FeedbackTypeMainReasonDisplay) {
+                    listener?.userSelectedNegativeFeedbackMainReason(reason.mainReason)
+                }
+            },
+        )
 
         activity?.let {
             binding.recyclerView.layoutManager = LinearLayoutManager(it)
             binding.recyclerView.adapter = recyclerAdapter
-            binding.recyclerView.addItemDecoration(FeedbackItemDecoration(ContextCompat.getDrawable(it, R.drawable.feedback_list_divider)!!))
 
             val listValues = getMainReasonsDisplayText()
             recyclerAdapter.submitList(listValues)

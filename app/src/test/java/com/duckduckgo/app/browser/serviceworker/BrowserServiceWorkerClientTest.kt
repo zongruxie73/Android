@@ -17,20 +17,18 @@
 package com.duckduckgo.app.browser.serviceworker
 
 import android.webkit.WebResourceRequest
+import androidx.core.net.toUri
 import androidx.test.filters.SdkSuppress
-import com.duckduckgo.app.CoroutineTestRule
 import com.duckduckgo.app.browser.RequestInterceptor
-import com.duckduckgo.app.global.exception.UncaughtExceptionRepository
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.duckduckgo.common.test.CoroutineTestRule
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
-@ExperimentalCoroutinesApi
 @SdkSuppress(minSdkVersion = 24)
 class BrowserServiceWorkerClientTest {
 
@@ -38,13 +36,12 @@ class BrowserServiceWorkerClientTest {
     var coroutinesTestRule = CoroutineTestRule()
 
     private val requestInterceptor: RequestInterceptor = mock()
-    private val uncaughtExceptionRepository: UncaughtExceptionRepository = mock()
 
     private lateinit var testee: BrowserServiceWorkerClient
 
     @Before
     fun setup() {
-        testee = BrowserServiceWorkerClient(requestInterceptor, uncaughtExceptionRepository)
+        testee = BrowserServiceWorkerClient(requestInterceptor)
     }
 
     @Test
@@ -54,7 +51,7 @@ class BrowserServiceWorkerClientTest {
 
         testee.shouldInterceptRequest(webResourceRequest)
 
-        verify(requestInterceptor).shouldInterceptFromServiceWorker(webResourceRequest, "example.com")
+        verify(requestInterceptor).shouldInterceptFromServiceWorker(webResourceRequest, "example.com".toUri())
     }
 
     @Test
@@ -64,7 +61,7 @@ class BrowserServiceWorkerClientTest {
 
         testee.shouldInterceptRequest(webResourceRequest)
 
-        verify(requestInterceptor).shouldInterceptFromServiceWorker(webResourceRequest, "example.com")
+        verify(requestInterceptor).shouldInterceptFromServiceWorker(webResourceRequest, "example.com".toUri())
     }
 
     @Test

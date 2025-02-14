@@ -17,78 +17,89 @@
 package com.duckduckgo.mobile.android.vpn.health
 
 import android.content.Context
-import android.net.ConnectivityManager
-import com.duckduckgo.app.global.extensions.isAirplaneModeOn
-import com.duckduckgo.app.utils.ConflatedJob
+import android.os.PowerManager
+import com.duckduckgo.common.utils.ConflatedJob
+import com.duckduckgo.common.utils.DispatcherProvider
+import com.duckduckgo.common.utils.extensions.isAirplaneModeOn
+import com.duckduckgo.common.utils.plugins.PluginPoint
 import com.duckduckgo.di.scopes.VpnScope
-import com.duckduckgo.mobile.android.vpn.feature.AppTpFeatureConfig
-import com.duckduckgo.mobile.android.vpn.feature.AppTpSetting
+import com.duckduckgo.mobile.android.vpn.network.util.getActiveNetwork
 import com.duckduckgo.mobile.android.vpn.pixels.DeviceShieldPixels
 import com.duckduckgo.mobile.android.vpn.service.TrackerBlockingVpnService
 import com.duckduckgo.mobile.android.vpn.service.VpnServiceCallbacks
+import com.duckduckgo.mobile.android.vpn.service.connectivity.VpnConnectivityLossListenerPlugin
 import com.duckduckgo.mobile.android.vpn.state.VpnStateMonitor
 import com.squareup.anvil.annotations.ContributesMultibinding
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import timber.log.Timber
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.channels.SocketChannel
 import javax.inject.Inject
 import javax.inject.Provider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import logcat.LogPriority
+import logcat.asLog
+import logcat.logcat
 
-private const val WWW_DUCKDUCKGO_COM = "www.duckduckgo.com"
+// We use an IP address instead of a domain name to skip DNS resolution
+private const val PROBED_ADDRESS = "1.1.1.1"
 
 @ContributesMultibinding(VpnScope::class)
 class NetworkConnectivityHealthHandler @Inject constructor(
     private val context: Context,
     private val pixel: DeviceShieldPixels,
-    private val healthMetricCounter: HealthMetricCounter,
-    private val appTpFeatureConfig: AppTpFeatureConfig,
     private val trackerBlockingVpnService: Provider<TrackerBlockingVpnService>,
+    private val vpnConnectivityLossListenerPluginPoint: PluginPoint<VpnConnectivityLossListenerPlugin>,
+    private val dispatcherProvider: DispatcherProvider,
 ) : VpnServiceCallbacks {
-    private val connectivityManager = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private val powerManager = context.applicationContext.getSystemService(Context.POWER_SERVICE) as PowerManager
     private val job = ConflatedJob()
 
     override fun onVpnStarted(coroutineScope: CoroutineScope) {
-        job += coroutineScope.launch {
+        job += coroutineScope.launch(dispatcherProvider.io()) {
             while (isActive) {
                 delay(15_000)
-                if (!hasVpnConnectivity() && !context.isAirplaneModeOn()) {
+                if (powerManager.isInteractive && !context.isAirplaneModeOn() && !hasVpnConnectivity()) {
                     if (hasDeviceConnectivity()) {
-                        Timber.d("Active VPN network does not have connectivity")
-                        pixel.reportVpnConnectivityError()
-                        if (appTpFeatureConfig.isEnabled(AppTpSetting.ConnectivityChecks)) {
-                            Timber.d("AppTpSetting.ConnectivityChecks is enabled, logging health event")
-                            healthMetricCounter.onVpnConnectivityError()
-                        } else {
-                            Timber.d("AppTpSetting.ConnectivityChecks is disabled")
+                        vpnConnectivityLossListenerPluginPoint.getPlugins().forEach {
+                            logcat { "Calling onVpnConnectivityLoss on $it" }
+                            it.onVpnConnectivityLoss(coroutineScope)
                         }
+                        logcat { "Active VPN network does not have connectivity" }
+                        pixel.reportVpnConnectivityError()
                     } else {
-                        Timber.d("Device doesn't have connectivity either")
+                        logcat { "Device doesn't have connectivity either" }
                         pixel.reportDeviceConnectivityError()
+                    }
+                } else {
+                    vpnConnectivityLossListenerPluginPoint.getPlugins().forEach {
+                        logcat { "Calling onVpnConnected on $it" }
+                        it.onVpnConnected(coroutineScope)
                     }
                 }
             }
         }
     }
 
-    override fun onVpnStopped(coroutineScope: CoroutineScope, vpnStopReason: VpnStateMonitor.VpnStopReason) {
+    override fun onVpnStopped(
+        coroutineScope: CoroutineScope,
+        vpnStopReason: VpnStateMonitor.VpnStopReason,
+    ) {
         job.cancel()
     }
 
     private fun hasVpnConnectivity(): Boolean {
-        connectivityManager.activeNetwork?.let { activeNetwork ->
+        context.getActiveNetwork()?.let { activeNetwork ->
             var socket: Socket? = null
             try {
                 socket = activeNetwork.socketFactory.createSocket()
-                socket.connect(InetSocketAddress(WWW_DUCKDUCKGO_COM, 443), 5000)
-                Timber.v("Validated $activeNetwork VPN network has connectivity to $WWW_DUCKDUCKGO_COM")
+                socket.connect(InetSocketAddress(PROBED_ADDRESS, 443), 5000)
+                logcat { "Validated $activeNetwork VPN network has connectivity to $PROBED_ADDRESS" }
                 return true
             } catch (t: Throwable) {
-                Timber.e(t, "No connectivity for network $activeNetwork")
+                logcat(LogPriority.ERROR) { t.asLog() }
                 return false
             } finally {
                 runCatching { socket?.close() }
@@ -100,16 +111,16 @@ class NetworkConnectivityHealthHandler @Inject constructor(
     }
 
     private fun hasDeviceConnectivity(): Boolean {
-        connectivityManager.activeNetwork?.let { activeNetwork ->
+        context.getActiveNetwork()?.let { activeNetwork ->
             var socket: Socket? = null
             try {
                 socket = SocketChannel.open().socket()
                 trackerBlockingVpnService.get().protect(socket)
-                socket.connect(InetSocketAddress(WWW_DUCKDUCKGO_COM, 443), 5000)
-                Timber.v("Validated $activeNetwork device network has connectivity to $WWW_DUCKDUCKGO_COM")
+                socket.connect(InetSocketAddress(PROBED_ADDRESS, 443), 5000)
+                logcat { "Validated $activeNetwork device network has connectivity to $PROBED_ADDRESS" }
                 return true
             } catch (t: Throwable) {
-                Timber.e(t, "No connectivity for network $activeNetwork")
+                logcat(LogPriority.ERROR) { t.asLog() }
                 return false
             } finally {
                 runCatching { socket?.close() }

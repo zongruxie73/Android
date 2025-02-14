@@ -19,13 +19,12 @@ package com.duckduckgo.app.browser.history
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
+import android.view.LayoutInflater
 import androidx.lifecycle.LifecycleOwner
-import androidx.recyclerview.widget.RecyclerView
-import com.duckduckgo.app.browser.BrowserTabViewModel.Command.ShowBackNavigationHistory
+import com.duckduckgo.app.browser.commands.Command.ShowBackNavigationHistory
+import com.duckduckgo.app.browser.databinding.NavigationHistoryPopupViewBinding
 import com.duckduckgo.app.browser.favicon.FaviconManager
 import com.duckduckgo.app.browser.history.NavigationHistoryAdapter.NavigationHistoryListener
-import com.duckduckgo.mobile.android.R
-import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 
 @SuppressLint("NoBottomSheetDialog")
@@ -35,8 +34,10 @@ class NavigationHistorySheet(
     private val faviconManager: FaviconManager,
     private val tabId: String,
     private val history: ShowBackNavigationHistory,
-    private val listener: NavigationHistorySheetListener
-) : BottomSheetDialog(context, R.style.NavigationHistoryDialog) {
+    private val listener: NavigationHistorySheetListener,
+) : BottomSheetDialog(context) {
+
+    private val binding = NavigationHistoryPopupViewBinding.inflate(LayoutInflater.from(context))
 
     interface NavigationHistorySheetListener {
         fun historicalPageSelected(stackIndex: Int)
@@ -45,20 +46,19 @@ class NavigationHistorySheet(
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        behavior.state = BottomSheetBehavior.STATE_EXPANDED
-        behavior.skipCollapsed = true
+        setContentView(binding.root)
 
-        setContentView(com.duckduckgo.app.browser.R.layout.navigation_history_popup_view)
-
-        findViewById<RecyclerView>(com.duckduckgo.app.browser.R.id.historyRecycler)?.also { recycler ->
+        binding.historyRecycler.also { recycler ->
             NavigationHistoryAdapter(
-                viewLifecycleOwner, faviconManager, tabId,
+                viewLifecycleOwner,
+                faviconManager,
+                tabId,
                 object : NavigationHistoryListener {
                     override fun historicalPageSelected(stackIndex: Int) {
                         dismiss()
                         listener.historicalPageSelected(stackIndex)
                     }
-                }
+                },
             ).also { adapter ->
                 recycler.adapter = adapter
                 adapter.updateNavigationHistory(history.history)

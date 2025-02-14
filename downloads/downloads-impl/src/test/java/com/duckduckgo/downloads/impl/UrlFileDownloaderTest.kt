@@ -16,10 +16,10 @@
 
 package com.duckduckgo.downloads.impl
 
-import com.duckduckgo.app.CoroutineTestRule
+import com.duckduckgo.common.test.CoroutineTestRule
 import com.duckduckgo.downloads.api.DownloadFailReason
 import com.duckduckgo.downloads.api.FileDownloader
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import java.io.File
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -30,9 +30,7 @@ import org.mockito.ArgumentMatchers.anyString
 import org.mockito.kotlin.*
 import retrofit2.Call
 import retrofit2.Response
-import java.io.File
 
-@ExperimentalCoroutinesApi
 class UrlFileDownloaderTest {
     @get:Rule
     @Suppress("unused")
@@ -46,12 +44,13 @@ class UrlFileDownloaderTest {
 
     @Before
     fun setup() {
-
         realFileDownloadManager = RealUrlFileDownloadCallManager()
         whenever(downloadFileService.downloadFile(anyString(), anyString())).thenReturn(call)
 
         urlFileDownloader = UrlFileDownloader(
-            downloadFileService, realFileDownloadManager, FakeCookieManagerWrapper()
+            downloadFileService,
+            realFileDownloadManager,
+            FakeCookieManagerWrapper(),
         )
     }
 

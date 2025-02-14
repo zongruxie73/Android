@@ -16,7 +16,7 @@
 
 package com.duckduckgo.privacy.config.store.features.amplinks
 
-import com.duckduckgo.app.CoroutineTestRule
+import com.duckduckgo.common.test.CoroutineTestRule
 import com.duckduckgo.privacy.config.store.*
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.test.TestScope
@@ -46,7 +46,8 @@ class RealAmpLinksRepositoryTest {
         testee = RealAmpLinksRepository(
             mockDatabase,
             TestScope(),
-            coroutineRule.testDispatcherProvider
+            coroutineRule.testDispatcherProvider,
+            true,
         )
     }
 
@@ -57,10 +58,11 @@ class RealAmpLinksRepositoryTest {
         testee = RealAmpLinksRepository(
             mockDatabase,
             TestScope(),
-            coroutineRule.testDispatcherProvider
+            coroutineRule.testDispatcherProvider,
+            true,
         )
 
-        assertEquals(ampLinkExceptionEntity.toAmpLinkException(), testee.exceptions.first())
+        assertEquals(ampLinkExceptionEntity.toFeatureException(), testee.exceptions.first())
         assertEquals(ampLinkFormatEntity.format, testee.ampLinkFormats.first().toString())
         assertEquals(ampKeywordEntity.keyword, testee.ampKeywords.first())
     }
@@ -70,7 +72,8 @@ class RealAmpLinksRepositoryTest {
         testee = RealAmpLinksRepository(
             mockDatabase,
             TestScope(),
-            coroutineRule.testDispatcherProvider
+            coroutineRule.testDispatcherProvider,
+            true,
         )
 
         testee.updateAll(listOf(), listOf(), listOf())
@@ -85,7 +88,8 @@ class RealAmpLinksRepositoryTest {
         testee = RealAmpLinksRepository(
             mockDatabase,
             TestScope(),
-            coroutineRule.testDispatcherProvider
+            coroutineRule.testDispatcherProvider,
+            true,
         )
         assertEquals(1, testee.exceptions.size)
         assertEquals(1, testee.ampLinkFormats.size)
@@ -109,15 +113,15 @@ class RealAmpLinksRepositoryTest {
     companion object {
         val ampLinkExceptionEntity = AmpLinkExceptionEntity(
             domain = "https://www.example.com",
-            reason = "reason"
+            reason = "reason",
         )
 
         val ampLinkFormatEntity = AmpLinkFormatEntity(
-            format = "https?:\\/\\/(?:w{3}\\.)?google\\.\\w{2,}\\/amp\\/s\\/(\\S+)"
+            format = "https?:\\/\\/(?:w{3}\\.)?google\\.\\w{2,}\\/amp\\/s\\/(\\S+)",
         )
 
         val ampKeywordEntity = AmpKeywordEntity(
-            keyword = "keyword"
+            keyword = "keyword",
         )
     }
 }

@@ -18,24 +18,21 @@ package com.duckduckgo.cookies.impl
 
 import android.webkit.CookieManager
 import android.webkit.ValueCallback
-import com.duckduckgo.app.CoroutineTestRule
+import com.duckduckgo.common.test.CoroutineTestRule
 import com.duckduckgo.cookies.api.CookieManagerProvider
 import com.duckduckgo.cookies.api.RemoveCookiesStrategy
 import kotlinx.coroutines.test.runTest
-import org.mockito.kotlin.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.withContext
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.kotlin.*
 
 private data class Cookie(
     val url: String,
-    val value: String
+    val value: String,
 )
 
-@ExperimentalCoroutinesApi
 class WebViewCookieManagerTest {
     @get:Rule
     @Suppress("unused")
@@ -49,7 +46,7 @@ class WebViewCookieManagerTest {
     private val testee: WebViewCookieManager = WebViewCookieManager(
         cookieManagerProvider,
         removeCookieStrategy,
-        coroutineRule.testDispatcherProvider
+        coroutineRule.testDispatcherProvider,
     )
 
     @Before
@@ -64,7 +61,7 @@ class WebViewCookieManagerTest {
     fun whenCookiesRemovedThenInternalCookiesRecreated() = runTest {
         givenCookieManagerWithCookies(ddgCookie, externalHostCookie)
 
-        withContext(Dispatchers.Main) {
+        withContext(coroutineRule.testDispatcherProvider.main()) {
             testee.removeExternalCookies()
         }
 
@@ -75,7 +72,7 @@ class WebViewCookieManagerTest {
     fun whenCookiesStoredThenRemoveCookiesExecuted() = runTest {
         givenCookieManagerWithCookies(ddgCookie, externalHostCookie)
 
-        withContext(Dispatchers.Main) {
+        withContext(coroutineRule.testDispatcherProvider.main()) {
             testee.removeExternalCookies()
         }
 
@@ -86,7 +83,7 @@ class WebViewCookieManagerTest {
     fun whenCookiesStoredThenFlushBeforeAndAfterInteractingWithCookieManager() = runTest {
         givenCookieManagerWithCookies(ddgCookie, externalHostCookie)
 
-        withContext(Dispatchers.Main) {
+        withContext(coroutineRule.testDispatcherProvider.main()) {
             testee.removeExternalCookies()
         }
 
@@ -103,7 +100,7 @@ class WebViewCookieManagerTest {
     fun whenNoCookiesThenRemoveProcessNotExecuted() = runTest {
         givenCookieManagerWithCookies()
 
-        withContext(Dispatchers.Main) {
+        withContext(coroutineRule.testDispatcherProvider.main()) {
             testee.removeExternalCookies()
         }
 

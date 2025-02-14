@@ -19,21 +19,18 @@ package com.duckduckgo.app.integration
 import android.net.Uri
 import androidx.room.Room
 import androidx.test.platform.app.InstrumentationRegistry
-import com.duckduckgo.app.global.db.AppDatabase
-import com.duckduckgo.app.global.store.BinaryDataStore
-import com.duckduckgo.app.httpsupgrade.HttpsBloomFilterFactoryImpl
-import com.duckduckgo.app.httpsupgrade.HttpsUpgrader
-import com.duckduckgo.app.httpsupgrade.HttpsUpgraderImpl
-import com.duckduckgo.app.httpsupgrade.api.HttpsFalsePositivesJsonAdapter
-import com.duckduckgo.app.httpsupgrade.store.HttpsDataPersister
-import com.duckduckgo.app.privacy.db.UserWhitelistDao
 import com.duckduckgo.app.statistics.pixels.Pixel
+import com.duckduckgo.common.utils.store.BinaryDataStore
 import com.duckduckgo.feature.toggles.api.FeatureToggle
+import com.duckduckgo.httpsupgrade.api.HttpsUpgrader
+import com.duckduckgo.httpsupgrade.impl.HttpsBloomFilterFactoryImpl
+import com.duckduckgo.httpsupgrade.impl.HttpsDataPersister
+import com.duckduckgo.httpsupgrade.impl.HttpsFalsePositivesJsonAdapter
+import com.duckduckgo.httpsupgrade.impl.HttpsUpgraderImpl
+import com.duckduckgo.httpsupgrade.store.HttpsUpgradeDatabase
 import com.duckduckgo.httpsupgrade.store.PlayHttpsEmbeddedDataPersister
 import com.duckduckgo.privacy.config.api.Https
 import com.duckduckgo.privacy.config.api.PrivacyFeatureName
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
 import com.squareup.moshi.Moshi
 import org.junit.After
 import org.junit.Assert.assertFalse
@@ -41,15 +38,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Ignore
 import org.junit.Test
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
 class HttpsEmbeddedDataIntegrationTest {
 
     private lateinit var httpsUpgrader: HttpsUpgrader
-    private lateinit var db: AppDatabase
+    private lateinit var db: HttpsUpgradeDatabase
 
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private var moshi = Moshi.Builder().add(HttpsFalsePositivesJsonAdapter()).build()
-    private var mockUserAllowlistDao: UserWhitelistDao = mock()
     private var mockFeatureToggle: FeatureToggle = mock()
     private var mockHttps: Https = mock()
     private var mockPixel: Pixel = mock()
@@ -58,7 +56,7 @@ class HttpsEmbeddedDataIntegrationTest {
     fun before() {
         whenever(mockFeatureToggle.isFeatureEnabled(PrivacyFeatureName.HttpsFeatureName.value)).thenReturn(true)
 
-        db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+        db = Room.inMemoryDatabaseBuilder(context, HttpsUpgradeDatabase::class.java)
             .allowMainThreadQueries()
             .build()
 
@@ -70,14 +68,14 @@ class HttpsEmbeddedDataIntegrationTest {
             binaryDataStore,
             httpsBloomSpecDao,
             httpsFalsePositivesDao,
-            db
+            db,
         )
 
         val embeddedDataPersister = PlayHttpsEmbeddedDataPersister(persister, binaryDataStore, httpsBloomSpecDao, context, moshi)
 
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val factory = HttpsBloomFilterFactoryImpl(httpsBloomSpecDao, binaryDataStore, embeddedDataPersister, persister, mockPixel, context)
-        httpsUpgrader = HttpsUpgraderImpl(factory, httpsFalsePositivesDao, mockUserAllowlistDao, mockFeatureToggle, mockHttps)
+        httpsUpgrader = HttpsUpgraderImpl(factory, httpsFalsePositivesDao, mockFeatureToggle, mockHttps)
         httpsUpgrader.reloadData()
     }
 

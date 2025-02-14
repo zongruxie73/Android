@@ -14,10 +14,11 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-<resources>
-    <!-- Autoconsent -->
-    <string name="autoconsentTitle">Upravljanje skočnim prozorima kolačića</string>
-    <string name="autoconsentDescription">Kada DuckDuckGo otkrije skočne prozore pristanka za kolačiće na web lokacijama koje posjećuješ, možemo automatski odrediti tvoje postavke kolačića kako bismo minimizirali kolačiće i maksimizirali privatnost, a zatim zatvorili skočne prozore.</string>
-    <string name="autoconsentToggle">Neka DuckDuckGo upravlja skočnim prozorima za pristanak na kolačiće</string>
-
+<!-- smartling.entity_escaping = false -->
+<!-- smartling.instruction_attributes = instruction -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="autoconsentTitle">Zaštita od kolačića i skočnih prozora</string>
+    <string name="autoconsentDescription"><![CDATA[Kada DuckDuckGo otkrije skočne prozore kolačića na web lokacijama koje posjećuješ, možemo automatski postaviti tvoje postavke kolačića kako bismo minimizirali kolačiće i maksimizirali privatnost, a zatim zatvorili skočne prozore. <u><a href=\"\">Saznaj više</a><u/>]]></string>
+    <string name="autoconsentDescriptionNew"><![CDATA[DuckDuckGo će pokušati za tebe odabrati najprivatnije dostupne postavke i sakriti skočne prozore.\n<a href=\"\">Saznaj više</a>]]></string>
+    <string name="autoconsentToggle">Neka DuckDuckGo upravlja skočnim prozorima kolačića</string>
 </resources>

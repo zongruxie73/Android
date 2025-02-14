@@ -22,8 +22,8 @@ import com.duckduckgo.app.browser.R
 import com.duckduckgo.app.browser.databinding.ContentFeedbackNegativeBrokenSiteFeedbackBinding
 import com.duckduckgo.app.feedback.ui.common.FeedbackFragment
 import com.duckduckgo.app.feedback.ui.common.LayoutScrollingTouchListener
+import com.duckduckgo.common.ui.viewbinding.viewBinding
 import com.duckduckgo.di.scopes.FragmentScope
-import com.duckduckgo.mobile.android.ui.viewbinding.viewBinding
 
 @InjectWith(FragmentScope::class)
 class BrokenSiteNegativeFeedbackFragment : FeedbackFragment(R.layout.content_feedback_negative_broken_site_feedback) {
@@ -31,7 +31,7 @@ class BrokenSiteNegativeFeedbackFragment : FeedbackFragment(R.layout.content_fee
     interface BrokenSiteFeedbackListener {
         fun onProvidedBrokenSiteFeedback(
             feedback: String,
-            url: String?
+            url: String?,
         )
 
         fun userCancelled()
@@ -60,13 +60,13 @@ class BrokenSiteNegativeFeedbackFragment : FeedbackFragment(R.layout.content_fee
     override fun configureListeners() {
         with(binding) {
             submitFeedbackButton.doOnNextLayout {
-                brokenSiteInput.setOnTouchListener(LayoutScrollingTouchListener(rootScrollView, brokenSiteInputContainer.y.toInt()))
-                openEndedFeedback.setOnTouchListener(LayoutScrollingTouchListener(rootScrollView, openEndedFeedbackContainer.y.toInt()))
+                brokenSiteInput.setOnTouchListener(LayoutScrollingTouchListener(rootScrollView, brokenSiteInput.y.toInt()))
+                openEndedFeedback.setOnTouchListener(LayoutScrollingTouchListener(rootScrollView, openEndedFeedback.y.toInt()))
             }
 
             submitFeedbackButton.setOnClickListener {
-                val feedback = openEndedFeedback.text.toString()
-                val brokenSite = brokenSiteInput.text.toString()
+                val feedback = openEndedFeedback.text
+                val brokenSite = brokenSiteInput.text
 
                 viewModel.userSubmittingFeedback(feedback, brokenSite)
             }

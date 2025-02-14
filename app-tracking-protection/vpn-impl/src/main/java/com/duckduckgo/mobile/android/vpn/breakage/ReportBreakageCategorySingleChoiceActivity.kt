@@ -16,36 +16,35 @@
 
 package com.duckduckgo.mobile.android.vpn.breakage
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Base64
-import android.view.View
-import androidx.appcompat.app.AlertDialog
 import androidx.core.text.HtmlCompat
 import androidx.lifecycle.Lifecycle.State.STARTED
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.duckduckgo.anvil.annotations.ContributeToActivityStarter
 import com.duckduckgo.anvil.annotations.InjectWith
-import com.duckduckgo.app.global.DuckDuckGoActivity
+import com.duckduckgo.common.ui.DuckDuckGoActivity
+import com.duckduckgo.common.ui.view.dialog.RadioListAlertDialogBuilder
+import com.duckduckgo.common.ui.viewbinding.viewBinding
 import com.duckduckgo.di.scopes.ActivityScope
-import com.duckduckgo.di.scopes.VpnScope
-import com.duckduckgo.mobile.android.ui.viewbinding.viewBinding
 import com.duckduckgo.mobile.android.vpn.R
 import com.duckduckgo.mobile.android.vpn.breakage.ReportBreakageCategorySingleChoiceViewModel.Command
 import com.duckduckgo.mobile.android.vpn.breakage.ReportBreakageCategorySingleChoiceViewModel.ViewState
 import com.duckduckgo.mobile.android.vpn.databinding.ActivityReportBreakageCategorySingleChoiceBinding
 import com.duckduckgo.mobile.android.vpn.pixels.DeviceShieldPixels
-import dagger.WrongScope
+import com.duckduckgo.mobile.android.vpn.ui.OpenVpnBreakageCategoryWithBrokenApp
+import com.duckduckgo.navigation.api.getActivityParams
+import javax.inject.Inject
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@WrongScope(
-    comment = "To use the right scope we first need to enable dagger component nesting",
-    correctScope = ActivityScope::class,
+@InjectWith(
+    scope = ActivityScope::class,
+    delayGeneration = true,
 )
-@InjectWith(VpnScope::class)
+@ContributeToActivityStarter(OpenVpnBreakageCategoryWithBrokenApp::class)
 class ReportBreakageCategorySingleChoiceActivity : DuckDuckGoActivity() {
 
     @Inject lateinit var deviceShieldPixels: DeviceShieldPixels
@@ -58,14 +57,19 @@ class ReportBreakageCategorySingleChoiceActivity : DuckDuckGoActivity() {
     private val toolbar
         get() = binding.includeToolbar.toolbar
 
-    private lateinit var brokenApp: BrokenApp
+    private lateinit var brokenApp: OpenVpnBreakageCategoryWithBrokenApp
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // The value should never be "unknown" we just do this because getParcelableExtra returns
         // nullable
-        brokenApp = intent.getParcelableExtra(APP_PACKAGE_ID_EXTRA) ?: BrokenApp("unknown", "unknown")
+        brokenApp = intent.getActivityParams(OpenVpnBreakageCategoryWithBrokenApp::class.java) ?: OpenVpnBreakageCategoryWithBrokenApp(
+            launchFrom = "unknown",
+            appName = "unknown",
+            appPackageId = "unknown",
+            breakageCategories = emptyList(),
+        )
 
         setContentView(binding.root)
         configureListeners()
@@ -83,27 +87,37 @@ class ReportBreakageCategorySingleChoiceActivity : DuckDuckGoActivity() {
         binding.appBreakageFormDisclaimer.text =
             HtmlCompat.fromHtml(
                 getString(R.string.atp_ReportBreakageFormDisclaimerText),
-                HtmlCompat.FROM_HTML_MODE_LEGACY
+                HtmlCompat.FROM_HTML_MODE_LEGACY,
             )
     }
 
     private fun configureListeners() {
-        val categories = viewModel.shuffledCategories.map { getString(it.category) }.toTypedArray()
-        binding.categoriesSelection.setOnClickListener {
-            AlertDialog.Builder(this)
-                .setTitle(getString(R.string.atp_ReportBreakageCategoriesTitle))
-                .setSingleChoiceItems(categories, viewModel.indexSelected) { _, newIndex ->
-                    viewModel.onCategoryIndexChanged(newIndex)
-                }
-                .setPositiveButton(getString(android.R.string.yes)) { dialog, _ ->
-                    viewModel.onCategoryAccepted()
-                    dialog.dismiss()
-                }
-                .setNegativeButton(getString(android.R.string.no)) { dialog, _ ->
-                    viewModel.onCategorySelectionCancelled()
-                    dialog.dismiss()
-                }
-                .show()
+        viewModel.setCategories(brokenApp.breakageCategories)
+        val categories = brokenApp.breakageCategories.map { it.description }
+        binding.categoriesSelection.onAction {
+            if (!isFinishing && !isDestroyed) {
+                RadioListAlertDialogBuilder(this)
+                    .setTitle(getString(R.string.atp_ReportBreakageCategoriesTitle))
+                    .setOptions(categories, viewModel.indexSelected + 1)
+                    .setPositiveButton(android.R.string.ok)
+                    .setNegativeButton(android.R.string.cancel)
+                    .addEventListener(
+                        object : RadioListAlertDialogBuilder.EventListener() {
+                            override fun onRadioItemSelected(selectedItem: Int) {
+                                viewModel.onCategoryIndexChanged(selectedItem - 1)
+                            }
+
+                            override fun onPositiveButtonClicked(selectedItem: Int) {
+                                viewModel.onCategoryAccepted()
+                            }
+
+                            override fun onNegativeButtonClicked() {
+                                viewModel.onCategorySelectionCancelled()
+                            }
+                        },
+                    )
+                    .show()
+            }
         }
         binding.ctaNextFormSubmit.setOnClickListener { viewModel.onSubmitPressed() }
     }
@@ -131,15 +145,16 @@ class ReportBreakageCategorySingleChoiceActivity : DuckDuckGoActivity() {
         lifecycleScope.launch {
             val issue =
                 IssueReport(
+                    reportedFrom = brokenApp.launchFrom,
                     appName = brokenApp.appName,
                     appPackageId = brokenApp.appPackageId,
-                    description = binding.appBreakageFormFeedbackInput.text.toString(),
-                    category = viewModel.viewState.value.categorySelected.toString(),
+                    description = binding.appBreakageFormFeedbackInput.text,
+                    category = viewModel.viewState.value.categorySelected?.key.toString(),
                     customMetadata =
                     Base64.encodeToString(
                         metadataReporter.getVpnStateMetadata(brokenApp.appPackageId).toByteArray(),
-                        Base64.NO_WRAP or Base64.NO_PADDING or Base64.URL_SAFE
-                    )
+                        Base64.NO_WRAP or Base64.NO_PADDING or Base64.URL_SAFE,
+                    ),
                 )
             deviceShieldPixels.sendAppBreakageReport(issue.toMap())
             setResult(RESULT_OK, Intent().apply { issue.addToIntent(this) })
@@ -149,22 +164,8 @@ class ReportBreakageCategorySingleChoiceActivity : DuckDuckGoActivity() {
 
     private fun render(viewState: ViewState) {
         val category =
-            viewState.categorySelected?.let { getString(viewState.categorySelected.category) }.orEmpty()
-        binding.categoriesSelection.setText(category)
-        binding.otherCategoryDescription.visibility = if (viewState.indexSelected == 8) View.VISIBLE else View.GONE
+            viewState.categorySelected?.let { viewState.categorySelected.description }.orEmpty()
+        binding.categoriesSelection.text = category
         binding.ctaNextFormSubmit.isEnabled = viewState.submitAllowed
-
-    }
-
-    companion object {
-
-        private const val APP_PACKAGE_ID_EXTRA = "APP_PACKAGE_ID_EXTRA"
-
-        fun intent(context: Context, brokenApp: BrokenApp): Intent {
-
-            return Intent(context, ReportBreakageCategorySingleChoiceActivity::class.java).apply {
-                putExtra(APP_PACKAGE_ID_EXTRA, brokenApp)
-            }
-        }
     }
 }

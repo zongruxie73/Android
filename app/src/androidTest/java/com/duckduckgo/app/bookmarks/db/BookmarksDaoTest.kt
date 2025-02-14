@@ -19,9 +19,8 @@ package com.duckduckgo.app.bookmarks.db
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.room.Room
 import androidx.test.platform.app.InstrumentationRegistry
-import com.duckduckgo.app.CoroutineTestRule
 import com.duckduckgo.app.global.db.AppDatabase
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.duckduckgo.common.test.CoroutineTestRule
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -30,14 +29,12 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-@ExperimentalCoroutinesApi
 class BookmarksDaoTest {
 
     @get:Rule
     @Suppress("unused")
     var instantTaskExecutorRule = InstantTaskExecutorRule()
 
-    @ExperimentalCoroutinesApi
     @get:Rule
     var coroutinesTestRule = CoroutineTestRule()
 
@@ -70,7 +67,7 @@ class BookmarksDaoTest {
     fun whenBookmarksDeletedThenTheyAreNoLongerInTheList() = runTest {
         val bookmarks = listOf(
             BookmarkEntity(id = 1, title = "title", url = "www.example.com", parentId = 0),
-            BookmarkEntity(id = 2, title = "another title", url = "www.foo.example.com", parentId = 0)
+            BookmarkEntity(id = 2, title = "another title", url = "www.foo.example.com", parentId = 0),
         )
         dao.insertList(bookmarks)
         dao.deleteList(bookmarks)
@@ -90,7 +87,7 @@ class BookmarksDaoTest {
     fun whenBookmarksAddedThenTheyAreInTheList() = runTest {
         val bookmarks = listOf(
             BookmarkEntity(id = 1, title = "title", url = "www.example.com", parentId = 0),
-            BookmarkEntity(id = 2, title = "another title", url = "www.foo.example.com", parentId = 0)
+            BookmarkEntity(id = 2, title = "another title", url = "www.foo.example.com", parentId = 0),
         )
         dao.insertList(bookmarks)
         val list = dao.getBookmarks().first()
@@ -101,7 +98,7 @@ class BookmarksDaoTest {
     fun whenBookmarksAddedThenTheyAreInTheListByParentId() = runTest {
         val bookmarks = listOf(
             BookmarkEntity(id = 1, title = "title", url = "www.example.com", parentId = 1),
-            BookmarkEntity(id = 2, title = "another title", url = "www.foo.example.com", parentId = 1)
+            BookmarkEntity(id = 2, title = "another title", url = "www.foo.example.com", parentId = 1),
         )
         dao.insertList(bookmarks)
         val list = dao.getBookmarksByParentId(1).first()
@@ -177,7 +174,7 @@ class BookmarksDaoTest {
     fun whenAllBookmarksDeletedThenDeleteAllBookmarks() = runTest {
         val bookmarks = listOf(
             BookmarkEntity(id = 1, title = "title", url = "www.example.com", parentId = 1),
-            BookmarkEntity(id = 2, title = "another title", url = "www.foo.example.com", parentId = 1)
+            BookmarkEntity(id = 2, title = "another title", url = "www.foo.example.com", parentId = 1),
         )
         dao.insertList(bookmarks)
         dao.deleteAll()

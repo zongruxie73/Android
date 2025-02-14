@@ -49,7 +49,9 @@ private fun AnrEntity.asAnr(): Anr {
         file = file,
         lineNumber = lineNumber,
         stackTrace = stackTrace,
-        timestamp = timestamp
+        timestamp = timestamp,
+        webView = webView,
+        customTab = customTab,
     )
 }
 

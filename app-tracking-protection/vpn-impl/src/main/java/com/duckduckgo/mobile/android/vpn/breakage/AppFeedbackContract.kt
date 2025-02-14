@@ -20,21 +20,23 @@ import android.app.Activity.RESULT_OK
 import android.content.Context
 import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContract
+import com.duckduckgo.browser.api.ui.BrowserScreens.FeedbackActivityWithEmptyParams
+import com.duckduckgo.navigation.api.GlobalActivityStarter
+import javax.inject.Inject
 
-class AppFeedbackContract : ActivityResultContract<Void?, Boolean>() {
+class AppFeedbackContract @Inject constructor(
+    private val globalActivityStarter: GlobalActivityStarter,
+) : ActivityResultContract<Void?, Boolean>() {
     override fun createIntent(
         context: Context,
-        input: Void?
+        input: Void?,
     ): Intent {
-        // TODO Class.forName is not great but required to unblock ATP for now
-        // We need to make bigger refactors to extract features into its own gradle modules
-        // so that they are accessible from other places.
-        return Intent(context, Class.forName("com.duckduckgo.app.feedback.ui.common.FeedbackActivity"))
+        return globalActivityStarter.startIntent(context, FeedbackActivityWithEmptyParams)!!
     }
 
     override fun parseResult(
         resultCode: Int,
-        intent: Intent?
+        intent: Intent?,
     ): Boolean {
         return resultCode == RESULT_OK
     }

@@ -17,7 +17,8 @@
 package com.duckduckgo.privacy.config.impl.features.gpc
 
 import androidx.annotation.VisibleForTesting
-import com.duckduckgo.app.global.UriString.Companion.sameOrSubdomain
+import com.duckduckgo.app.browser.UriString.Companion.sameOrSubdomain
+import com.duckduckgo.app.privacy.db.UserAllowListRepository
 import com.duckduckgo.di.scopes.AppScope
 import com.duckduckgo.feature.toggles.api.FeatureToggle
 import com.duckduckgo.privacy.config.api.Gpc
@@ -25,15 +26,16 @@ import com.duckduckgo.privacy.config.api.PrivacyFeatureName
 import com.duckduckgo.privacy.config.api.UnprotectedTemporary
 import com.duckduckgo.privacy.config.store.features.gpc.GpcRepository
 import com.squareup.anvil.annotations.ContributesBinding
-import javax.inject.Inject
 import dagger.SingleInstanceIn
+import javax.inject.Inject
 
 @ContributesBinding(AppScope::class)
 @SingleInstanceIn(AppScope::class)
 class RealGpc @Inject constructor(
     private val featureToggle: FeatureToggle,
-    val gpcRepository: GpcRepository,
-    private val unprotectedTemporary: UnprotectedTemporary
+    private val gpcRepository: GpcRepository,
+    private val unprotectedTemporary: UnprotectedTemporary,
+    private val userAllowListRepository: UserAllowListRepository,
 ) : Gpc {
 
     override fun isEnabled(): Boolean {
@@ -50,7 +52,7 @@ class RealGpc @Inject constructor(
 
     override fun canUrlAddHeaders(
         url: String,
-        existingHeaders: Map<String, String>
+        existingHeaders: Map<String, String>,
     ): Boolean {
         return if (canGpcBeUsedByUrl(url) && !containsGpcHeader(existingHeaders)) {
             gpcRepository.headerEnabledSites.any { sameOrSubdomain(url, it.domain) }
@@ -80,8 +82,9 @@ class RealGpc @Inject constructor(
         return headers.containsKey(GPC_HEADER)
     }
 
-    private fun isAnException(url: String): Boolean {
-        return matches(url) || unprotectedTemporary.isAnException(url)
+    @VisibleForTesting
+    fun isAnException(url: String): Boolean {
+        return matches(url) || unprotectedTemporary.isAnException(url) || userAllowListRepository.isUrlInUserAllowList(url)
     }
 
     private fun matches(url: String): Boolean {

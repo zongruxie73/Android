@@ -21,8 +21,8 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.duckduckgo.app.browser.databinding.ItemFeedbackReasonBinding
 import com.duckduckgo.app.feedback.ui.negative.FeedbackTypeDisplay.FeedbackTypeMainReasonDisplay
+import com.duckduckgo.mobile.android.databinding.RowOneLineListItemBinding
 
 class MainReasonAdapter(private val itemClickListener: (FeedbackTypeMainReasonDisplay) -> Unit) :
     ListAdapter<FeedbackTypeMainReasonDisplay, MainReasonAdapter.ViewHolder>(DiffCallback()) {
@@ -30,14 +30,14 @@ class MainReasonAdapter(private val itemClickListener: (FeedbackTypeMainReasonDi
     class DiffCallback : DiffUtil.ItemCallback<FeedbackTypeMainReasonDisplay>() {
         override fun areItemsTheSame(
             oldItem: FeedbackTypeMainReasonDisplay,
-            newItem: FeedbackTypeMainReasonDisplay
+            newItem: FeedbackTypeMainReasonDisplay,
         ): Boolean {
             return oldItem == newItem
         }
 
         override fun areContentsTheSame(
             oldItem: FeedbackTypeMainReasonDisplay,
-            newItem: FeedbackTypeMainReasonDisplay
+            newItem: FeedbackTypeMainReasonDisplay,
         ): Boolean {
             return oldItem == newItem
         }
@@ -45,28 +45,30 @@ class MainReasonAdapter(private val itemClickListener: (FeedbackTypeMainReasonDi
 
     override fun onCreateViewHolder(
         parent: ViewGroup,
-        viewType: Int
+        viewType: Int,
     ): ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
-        val binding = ItemFeedbackReasonBinding.inflate(inflater, parent, false)
+        val binding = RowOneLineListItemBinding.inflate(inflater, parent, false)
         return ViewHolder(binding)
     }
 
     override fun onBindViewHolder(
         holder: ViewHolder,
-        position: Int
+        position: Int,
     ) {
         holder.bind(getItem(position), itemClickListener)
     }
 
-    data class ViewHolder(val binding: ItemFeedbackReasonBinding) : RecyclerView.ViewHolder(binding.root) {
+    data class ViewHolder(val binding: RowOneLineListItemBinding) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(
             reason: FeedbackTypeMainReasonDisplay,
-            clickListener: (FeedbackTypeMainReasonDisplay) -> Unit
+            clickListener: (FeedbackTypeMainReasonDisplay) -> Unit,
         ) {
-            binding.reason.text = binding.root.context.getString(reason.listDisplayResId)
-            binding.root.setOnClickListener { clickListener(reason) }
+            val listItem = binding.root
+            listItem.setLeadingIconVisibility(false)
+            listItem.setPrimaryText(binding.root.context.getString(reason.listDisplayResId))
+            listItem.setOnClickListener { clickListener(reason) }
         }
     }
 }

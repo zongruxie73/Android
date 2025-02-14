@@ -19,9 +19,13 @@ package dagger.android
 import android.app.Activity
 import android.app.Application
 import android.app.Service
+import android.app.backup.BackupAgentHelper
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.ContextWrapper
+import android.view.View
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.findFragment
 import dagger.BindsInstance
 import java.lang.RuntimeException
 
@@ -64,12 +68,14 @@ interface AndroidInjector<T> {
         inline fun <reified T, R : AndroidInjector<T>> inject(
             injector: Any,
             instance: T,
-            mapKey: Class<*>? = null
+            mapKey: Class<*>? = null,
         ) {
             if ((injector is HasDaggerInjector)) {
                 (injector.daggerFactoryFor(mapKey ?: instance!!::class.java) as Factory<T, R>)
                     .create(instance)
-                    .inject(instance)
+                    .run {
+                        javaClass.getMethod("inject", instance!!::class.java).invoke(this, instance)
+                    }
             } else {
                 throw RuntimeException("${injector.javaClass.canonicalName} class does not extend ${HasDaggerInjector::class.simpleName}")
             }
@@ -88,21 +94,21 @@ class AndroidInjection {
     companion object {
         inline fun <reified T : Activity> inject(
             instance: T,
-            bindingKey: Class<*>? = null
+            bindingKey: Class<*>? = null,
         ) {
             AndroidInjector.inject(instance.applicationContext as Application, instance, bindingKey)
         }
 
         inline fun <reified T : Fragment> inject(
             instance: T,
-            bindingKey: Class<*>? = null
+            bindingKey: Class<*>? = null,
         ) {
             AndroidInjector.inject(findHasDaggerInjectorForFragment(instance), instance, bindingKey)
         }
 
         inline fun <reified T : Service> inject(
             instance: T,
-            bindingKey: Class<*>? = null
+            bindingKey: Class<*>? = null,
         ) {
             AndroidInjector.inject(instance.application, instance, bindingKey)
         }
@@ -110,9 +116,23 @@ class AndroidInjection {
         inline fun <reified T : BroadcastReceiver> inject(
             instance: T,
             context: Context,
-            bindingKey: Class<*>? = null
+            bindingKey: Class<*>? = null,
         ) {
             AndroidInjector.inject(context.applicationContext as Application, instance, bindingKey)
+        }
+
+        inline fun <reified T : View> inject(
+            instance: T,
+            bindingKey: Class<*>? = null,
+        ) {
+            AndroidInjector.inject(findHasDaggerInjectorForView(instance), instance, bindingKey)
+        }
+
+        inline fun <reified T : BackupAgentHelper> inject(
+            instance: T,
+            bindingKey: Class<*>? = null,
+        ) {
+            AndroidInjector.inject(instance.applicationContext as Application, instance, bindingKey)
         }
 
         /**
@@ -142,6 +162,34 @@ class AndroidInjection {
             activity?.application?.let { return it as HasDaggerInjector }
 
             throw IllegalArgumentException("No injector found for ${fragment.javaClass.canonicalName}")
+        }
+
+        /**
+         * Injects the [view] if an associated [AndroidInjector] implementation is found, otherwise [IllegalArgumentException]
+         * is thrown.
+         *
+         * The algorithm is the following:
+         * 1. Locate the [DaggerFragment] fragment where this view is attached. If found, return it.
+         * 2. If the view is not attached to a [DaggerFragment] fragment, find the activity where this view is attached. If the activity
+         * implements [HasDaggerInjector] the return it.
+         * 3. If above steps are unsuccessful throw [IllegalArgumentException].
+         */
+        fun findHasDaggerInjectorForView(view: View): HasDaggerInjector {
+            try {
+                return view.findFragment<DaggerFragment>()
+            } catch (e: IllegalStateException) {
+                // This view is not attached to a [DaggerFragment] fragment.
+            }
+
+            var context = view.context
+            while (context is ContextWrapper) {
+                if (context is Activity && context is HasDaggerInjector) {
+                    return context
+                }
+                context = context.baseContext
+            }
+
+            throw IllegalArgumentException("No injector found for ${view.javaClass.canonicalName}")
         }
     }
 }

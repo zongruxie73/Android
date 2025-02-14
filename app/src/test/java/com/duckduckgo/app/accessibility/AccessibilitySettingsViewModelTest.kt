@@ -17,35 +17,48 @@
 package com.duckduckgo.app.accessibility
 
 import app.cash.turbine.test
-import com.duckduckgo.app.CoroutineTestRule
-import kotlinx.coroutines.test.runTest
 import com.duckduckgo.app.accessibility.data.AccessibilitySettingsDataStore
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.duckduckgo.app.statistics.pixels.Pixel
+import com.duckduckgo.common.test.CoroutineTestRule
+import com.duckduckgo.voice.api.VoiceSearchAvailability
+import com.duckduckgo.voice.impl.VoiceSearchPixelNames
+import com.duckduckgo.voice.store.VoiceSearchRepository
+import kotlin.time.ExperimentalTime
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import kotlin.time.ExperimentalTime
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
-@ExperimentalCoroutinesApi
 @ExperimentalTime
 class AccessibilitySettingsViewModelTest {
 
-    @ExperimentalCoroutinesApi
     @get:Rule
     var coroutineRule = CoroutineTestRule()
+    private val dispatcherProvider = coroutineRule.testDispatcherProvider
 
+    private val voiceSearchRepository: VoiceSearchRepository = mock()
+    private val voiceSearchAvailability: VoiceSearchAvailability = mock()
     private val accessibilitySettings: AccessibilitySettingsDataStore = mock()
-    private val testee = AccessibilitySettingsViewModel(accessibilitySettings)
+    private val pixel: Pixel = mock()
+    private val testee = AccessibilitySettingsViewModel(
+        accessibilitySettings,
+        voiceSearchAvailability,
+        voiceSearchRepository,
+        pixel,
+        dispatcherProvider,
+    )
 
     @Test
     fun whenViewModelCreatedThenDefaultViewStateEmitted() = runTest {
         val viewState = AccessibilitySettingsViewModel.ViewState(
             overrideSystemFontSize = false,
             appFontSize = 100f,
-            forceZoom = false
+            forceZoom = false,
+            voiceSearchEnabled = false,
+            showVoiceSearch = false,
         )
         testee.viewState().test {
             assertEquals(viewState, awaitItem())
@@ -58,11 +71,15 @@ class AccessibilitySettingsViewModelTest {
         val viewState = AccessibilitySettingsViewModel.ViewState(
             overrideSystemFontSize = true,
             appFontSize = 150f,
-            forceZoom = true
+            forceZoom = true,
+            voiceSearchEnabled = true,
+            showVoiceSearch = true,
         )
         whenever(accessibilitySettings.overrideSystemFontSize).thenReturn(true)
         whenever(accessibilitySettings.appFontSize).thenReturn(150f)
         whenever(accessibilitySettings.forceZoom).thenReturn(true)
+        whenever(voiceSearchAvailability.isVoiceSearchSupported).thenReturn(true)
+        whenever(voiceSearchAvailability.isVoiceSearchAvailable).thenReturn(true)
 
         testee.start()
 
@@ -139,6 +156,43 @@ class AccessibilitySettingsViewModelTest {
 
         verify(accessibilitySettings).appFontSize = 150f
         verify(accessibilitySettings).appFontSize
+    }
+
+    @Test
+    fun whenVoiceSearchEnabledThenViewStateEmitted() = runTest {
+        val viewState = defaultViewState()
+        whenever(voiceSearchAvailability.isVoiceSearchAvailable).thenReturn(true)
+
+        testee.onVoiceSearchChanged(true)
+
+        testee.viewState().test {
+            assertEquals(viewState.copy(voiceSearchEnabled = true), awaitItem())
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun whenVoiceSearchEnabledThenSettingsUpdated() = runTest {
+        testee.onVoiceSearchChanged(true)
+        verify(voiceSearchRepository).setVoiceSearchUserEnabled(true)
+    }
+
+    @Test
+    fun whenVoiceSearchDisabledThenSettingsUpdated() = runTest {
+        testee.onVoiceSearchChanged(false)
+        verify(voiceSearchRepository).setVoiceSearchUserEnabled(false)
+    }
+
+    @Test
+    fun whenVoiceSearchEnabledThenFirePixel() = runTest {
+        testee.onVoiceSearchChanged(true)
+        verify(pixel).fire(VoiceSearchPixelNames.VOICE_SEARCH_ON)
+    }
+
+    @Test
+    fun whenVoiceSearchDisabledThenFirePixel() = runTest {
+        testee.onVoiceSearchChanged(false)
+        verify(pixel).fire(VoiceSearchPixelNames.VOICE_SEARCH_OFF)
     }
 
     private fun defaultViewState() = AccessibilitySettingsViewModel.ViewState()

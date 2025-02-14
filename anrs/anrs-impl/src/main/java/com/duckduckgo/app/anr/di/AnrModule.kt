@@ -32,7 +32,7 @@ object AnrModule {
     @SingleInstanceIn(AppScope::class)
     fun provideAnrDatabase(context: Context): AnrsDatabase {
         return Room.databaseBuilder(context, AnrsDatabase::class.java, "anr_database.db")
-            .enableMultiInstanceInvalidation()
+            .addMigrations(*AnrsDatabase.ALL_MIGRATIONS.toTypedArray())
             .fallbackToDestructiveMigration()
             .build()
     }

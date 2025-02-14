@@ -20,19 +20,21 @@ import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import app.cash.turbine.test
-import com.duckduckgo.app.CoroutineTestRule
+import com.duckduckgo.common.test.CoroutineTestRule
 import com.duckduckgo.remote.messaging.api.Action
+import com.duckduckgo.remote.messaging.api.Action.Share
 import com.duckduckgo.remote.messaging.api.Content.BigSingleAction
 import com.duckduckgo.remote.messaging.api.Content.BigTwoActions
 import com.duckduckgo.remote.messaging.api.Content.Medium
 import com.duckduckgo.remote.messaging.api.Content.Placeholder.ANNOUNCE
+import com.duckduckgo.remote.messaging.api.Content.Placeholder.MAC_AND_WINDOWS
+import com.duckduckgo.remote.messaging.api.Content.PromoSingleAction
 import com.duckduckgo.remote.messaging.api.Content.Small
 import com.duckduckgo.remote.messaging.api.RemoteMessage
-import com.duckduckgo.remote.messaging.store.RemoteMessageEntity
+import com.duckduckgo.remote.messaging.fixtures.getMessageMapper
 import com.duckduckgo.remote.messaging.store.RemoteMessageEntity.Status
 import com.duckduckgo.remote.messaging.store.RemoteMessagingConfigRepository
 import com.duckduckgo.remote.messaging.store.RemoteMessagingDatabase
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -44,11 +46,9 @@ import org.junit.runner.RunWith
 import org.mockito.kotlin.mock
 
 // TODO: when pattern established, refactor objects to use (create module https://app.asana.com/0/0/1201807285420697/f)
-@ExperimentalCoroutinesApi
 @RunWith(AndroidJUnit4::class)
 class AppRemoteMessagingRepositoryTest {
 
-    @ExperimentalCoroutinesApi
     @get:Rule
     var coroutineRule = CoroutineTestRule()
 
@@ -62,7 +62,12 @@ class AppRemoteMessagingRepositoryTest {
 
     private val remoteMessagingConfigRepository: RemoteMessagingConfigRepository = mock()
 
-    private val testee = AppRemoteMessagingRepository(remoteMessagingConfigRepository, dao, coroutineRule.testDispatcherProvider)
+    private val testee = AppRemoteMessagingRepository(
+        remoteMessagingConfigRepository,
+        dao,
+        coroutineRule.testDispatcherProvider,
+        getMessageMapper(),
+    )
 
     @After
     fun after() {
@@ -77,11 +82,11 @@ class AppRemoteMessagingRepositoryTest {
                 content = Medium(
                     titleText = "titleText",
                     descriptionText = "descriptionText",
-                    placeholder = ANNOUNCE
+                    placeholder = ANNOUNCE,
                 ),
                 matchingRules = emptyList(),
-                exclusionRules = emptyList()
-            )
+                exclusionRules = emptyList(),
+            ),
         )
 
         testee.messageFlow().test {
@@ -93,12 +98,12 @@ class AppRemoteMessagingRepositoryTest {
                     content = Medium(
                         titleText = "titleText",
                         descriptionText = "descriptionText",
-                        placeholder = ANNOUNCE
+                        placeholder = ANNOUNCE,
                     ),
                     matchingRules = emptyList(),
-                    exclusionRules = emptyList()
+                    exclusionRules = emptyList(),
                 ),
-                message
+                message,
             )
             cancelAndConsumeRemainingEvents()
         }
@@ -111,11 +116,11 @@ class AppRemoteMessagingRepositoryTest {
                 id = "id",
                 content = Small(
                     titleText = "titleText",
-                    descriptionText = "descriptionText"
+                    descriptionText = "descriptionText",
                 ),
                 matchingRules = emptyList(),
-                exclusionRules = emptyList()
-            )
+                exclusionRules = emptyList(),
+            ),
         )
 
         testee.messageFlow().test {
@@ -126,12 +131,12 @@ class AppRemoteMessagingRepositoryTest {
                     id = "id",
                     content = Small(
                         titleText = "titleText",
-                        descriptionText = "descriptionText"
+                        descriptionText = "descriptionText",
                     ),
                     matchingRules = emptyList(),
-                    exclusionRules = emptyList()
+                    exclusionRules = emptyList(),
                 ),
-                message
+                message,
             )
             cancelAndConsumeRemainingEvents()
         }
@@ -147,11 +152,11 @@ class AppRemoteMessagingRepositoryTest {
                     descriptionText = "descriptionText",
                     placeholder = ANNOUNCE,
                     primaryAction = Action.PlayStore(value = "com.duckduckgo.com"),
-                    primaryActionText = "actionText"
+                    primaryActionText = "actionText",
                 ),
                 matchingRules = emptyList(),
-                exclusionRules = emptyList()
-            )
+                exclusionRules = emptyList(),
+            ),
         )
 
         testee.messageFlow().test {
@@ -165,12 +170,12 @@ class AppRemoteMessagingRepositoryTest {
                         descriptionText = "descriptionText",
                         placeholder = ANNOUNCE,
                         primaryAction = Action.PlayStore(value = "com.duckduckgo.com"),
-                        primaryActionText = "actionText"
+                        primaryActionText = "actionText",
                     ),
                     matchingRules = emptyList(),
-                    exclusionRules = emptyList()
+                    exclusionRules = emptyList(),
                 ),
-                message
+                message,
             )
             cancelAndConsumeRemainingEvents()
         }
@@ -188,11 +193,11 @@ class AppRemoteMessagingRepositoryTest {
                     primaryAction = Action.PlayStore(value = "com.duckduckgo.com"),
                     primaryActionText = "actionText",
                     secondaryActionText = "actionText",
-                    secondaryAction = Action.Dismiss()
+                    secondaryAction = Action.Dismiss,
                 ),
                 matchingRules = emptyList(),
-                exclusionRules = emptyList()
-            )
+                exclusionRules = emptyList(),
+            ),
         )
 
         testee.messageFlow().test {
@@ -208,12 +213,51 @@ class AppRemoteMessagingRepositoryTest {
                         primaryAction = Action.PlayStore(value = "com.duckduckgo.com"),
                         primaryActionText = "actionText",
                         secondaryActionText = "actionText",
-                        secondaryAction = Action.Dismiss()
+                        secondaryAction = Action.Dismiss,
                     ),
                     matchingRules = emptyList(),
-                    exclusionRules = emptyList()
+                    exclusionRules = emptyList(),
                 ),
-                message
+                message,
+            )
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun whenAddPromoSingleActionMessageThenMessageStored() = runTest {
+        testee.activeMessage(
+            RemoteMessage(
+                id = "id",
+                content = PromoSingleAction(
+                    titleText = "titleText",
+                    descriptionText = "descriptionText",
+                    placeholder = MAC_AND_WINDOWS,
+                    action = Share(value = "com.duckduckgo.com", additionalParameters = mapOf("title" to "share title")),
+                    actionText = "actionText",
+                ),
+                matchingRules = emptyList(),
+                exclusionRules = emptyList(),
+            ),
+        )
+
+        testee.messageFlow().test {
+            val message = awaitItem()
+
+            assertEquals(
+                RemoteMessage(
+                    id = "id",
+                    content = PromoSingleAction(
+                        titleText = "titleText",
+                        descriptionText = "descriptionText",
+                        placeholder = MAC_AND_WINDOWS,
+                        action = Share(value = "com.duckduckgo.com", additionalParameters = mapOf("title" to "share title")),
+                        actionText = "actionText",
+                    ),
+                    matchingRules = emptyList(),
+                    exclusionRules = emptyList(),
+                ),
+                message,
             )
             cancelAndConsumeRemainingEvents()
         }
@@ -221,22 +265,7 @@ class AppRemoteMessagingRepositoryTest {
 
     @Test
     fun whenDismissMessageThenUpdateState() = runTest {
-        testee.activeMessage(
-            RemoteMessage(
-                id = "id",
-                content = BigTwoActions(
-                    titleText = "titleText",
-                    descriptionText = "descriptionText",
-                    placeholder = ANNOUNCE,
-                    primaryAction = Action.PlayStore(value = "com.duckduckgo.com"),
-                    primaryActionText = "actionText",
-                    secondaryActionText = "actionText",
-                    secondaryAction = Action.Dismiss()
-                ),
-                matchingRules = emptyList(),
-                exclusionRules = emptyList()
-            )
-        )
+        testee.activeMessage(aRemoteMessage("id"))
         testee.messageFlow().test {
             var message = awaitItem()
             assertTrue(message?.content is BigTwoActions)
@@ -244,70 +273,159 @@ class AppRemoteMessagingRepositoryTest {
             testee.dismissMessage("id")
             message = awaitItem()
             assertNull(message)
+            dao.messagesById("id")?.let {
+                assertEquals(Status.DISMISSED, it.status)
+            }
             cancelAndConsumeRemainingEvents()
         }
     }
 
     @Test
     fun whenGetDismissedMessagesThenReturnDismissedMessageIds() = runTest {
-        testee.activeMessage(
-            RemoteMessage(
-                id = "id",
-                content = BigTwoActions(
-                    titleText = "titleText",
-                    descriptionText = "descriptionText",
-                    placeholder = ANNOUNCE,
-                    primaryAction = Action.PlayStore(value = "com.duckduckgo.com"),
-                    primaryActionText = "actionText",
-                    secondaryActionText = "actionText",
-                    secondaryAction = Action.Dismiss()
-                ),
-                matchingRules = emptyList(),
-                exclusionRules = emptyList()
-            )
-        )
-        testee.dismissMessage("id")
+        testee.activeMessage(aRemoteMessage("id1"))
+        testee.dismissMessage("id1")
+        testee.activeMessage(aRemoteMessage("id2"))
+        testee.dismissMessage("id2")
 
         val dismissedMessages = testee.dismissedMessages()
 
-        assertEquals("id", dismissedMessages.first())
+        assertTrue(dismissedMessages.size == 2)
+        assertEquals(listOf("id1", "id2"), dismissedMessages)
     }
 
     @Test
-    fun whenNewMessageAddedThenPreviousNonDismissedMessagesRemoved() = runTest {
-        dao.insert(
-            RemoteMessageEntity(
-                id = "id",
-                message = "",
-                status = Status.SCHEDULED
-            )
-        )
+    fun whenMessageShownAndNewActiveMessageThenUpdatePreviousStateToDone() {
+        testee.activeMessage(aRemoteMessage("id1"))
+        testee.markAsShown(aRemoteMessage("id1"))
+        testee.activeMessage(aRemoteMessage("id2"))
 
-        testee.activeMessage(
-            RemoteMessage(
-                id = "id2",
-                content = BigTwoActions(
-                    titleText = "titleText",
-                    descriptionText = "descriptionText",
-                    placeholder = ANNOUNCE,
-                    primaryAction = Action.PlayStore(value = "com.duckduckgo.com"),
-                    primaryActionText = "actionText",
-                    secondaryActionText = "actionText",
-                    secondaryAction = Action.Dismiss()
-                ),
-                matchingRules = emptyList(),
-                exclusionRules = emptyList()
-            )
-        )
-
-        testee.messageFlow().test {
-            var message = awaitItem()
-            assertEquals("id2", message?.id)
-            testee.dismissMessage("id2")
-
-            message = awaitItem()
-            assertNull(message)
-            cancelAndConsumeRemainingEvents()
+        dao.messagesById("id1")?.let {
+            assertEquals(Status.DONE, it.status)
+            assertTrue(it.shown)
         }
+        dao.messagesById("id2")?.let {
+            assertEquals(Status.SCHEDULED, it.status)
+        }
+    }
+
+    @Test
+    fun whenNewActiveMessageThenPreviousRemovedIfWasNeverShown() {
+        testee.activeMessage(aRemoteMessage("id1"))
+        testee.activeMessage(aRemoteMessage("id2"))
+
+        assertNull(dao.messagesById("id1"))
+        dao.messagesById("id2")?.let {
+            assertEquals(Status.SCHEDULED, it.status)
+        }
+    }
+
+    @Test
+    fun whenNewActiveMessageExistedAsDoneThenUpdateToScheduled() = runTest {
+        // active message id1 is show to user
+        testee.activeMessage(aRemoteMessage("id1"))
+        dao.messagesById("id1")?.let {
+            assertEquals(Status.SCHEDULED, it.status)
+        }
+        testee.markAsShown(aRemoteMessage("id1"))
+        dao.messagesById("id1")?.let {
+            assertEquals(Status.SCHEDULED, it.status)
+            assertTrue(it.shown)
+        }
+
+        // message id2 is active, previous one is moved to done state
+        testee.activeMessage(aRemoteMessage("id2"))
+        dao.messagesById("id1")?.let {
+            assertEquals(Status.DONE, it.status)
+            assertTrue(it.shown)
+        }
+        dao.messagesById("id2")?.let {
+            assertEquals(Status.SCHEDULED, it.status)
+        }
+        testee.dismissMessage("id2")
+        dao.messagesById("id2")?.let {
+            assertEquals(Status.DISMISSED, it.status)
+        }
+
+        // message id1 is active again, it should be moved to scheduled state
+        testee.activeMessage(aRemoteMessage("id1"))
+        dao.messagesById("id1")?.let {
+            assertEquals(Status.SCHEDULED, it.status)
+            assertEquals(true, it.shown) // shown state is not reset
+        }
+    }
+
+    @Test
+    fun whenNewActiveMessageWasPreviouslyDismissedThenStatusNotUpdated() = runTest {
+        // active message id1 is show to user
+        testee.activeMessage(aRemoteMessage("id1"))
+        dao.messagesById("id1")?.let {
+            assertEquals(Status.SCHEDULED, it.status)
+        }
+        testee.dismissMessage("id1")
+        dao.messagesById("id1")?.let {
+            assertEquals(Status.DISMISSED, it.status)
+        }
+
+        // new active message, previous one is not updated (dismissed)
+        testee.activeMessage(aRemoteMessage("id2"))
+        dao.messagesById("id1")?.let {
+            assertEquals(Status.DISMISSED, it.status)
+        }
+        dao.messagesById("id2")?.let {
+            assertEquals(Status.SCHEDULED, it.status)
+        }
+
+        // message id1 is active again, state is not updated (dismissed)
+        testee.activeMessage(aRemoteMessage("id1"))
+        dao.messagesById("id1")?.let {
+            assertEquals(Status.DISMISSED, it.status)
+        }
+    }
+
+    @Test
+    fun whenNewActiveMessageThenDoneMessagesNotShownRemoved() = runTest {
+        // active message id1 is shown to user
+        testee.activeMessage(aRemoteMessage("id1"))
+        dao.messagesById("id1")?.let {
+            assertEquals(Status.SCHEDULED, it.status)
+        }
+        testee.markAsShown(aRemoteMessage("id1"))
+        dao.messagesById("id1")?.let {
+            assertEquals(Status.SCHEDULED, it.status)
+        }
+
+        // active message id2 is not shown to user
+        testee.activeMessage(aRemoteMessage("id2"))
+        dao.messagesById("id2")?.let {
+            assertEquals(Status.SCHEDULED, it.status)
+        }
+
+        // new active message id3
+        testee.activeMessage(aRemoteMessage("id3"))
+        dao.messagesById("id1")?.let {
+            assertEquals(Status.DONE, it.status)
+            assertTrue(it.shown)
+        }
+        assertNull(dao.messagesById("id2"))
+        dao.messagesById("id3")?.let {
+            assertEquals(Status.SCHEDULED, it.status)
+        }
+    }
+
+    companion object {
+        fun aRemoteMessage(id: String) = RemoteMessage(
+            id = id,
+            content = BigTwoActions(
+                titleText = "titleText",
+                descriptionText = "descriptionText",
+                placeholder = ANNOUNCE,
+                primaryAction = Action.PlayStore(value = "com.duckduckgo.com"),
+                primaryActionText = "actionText",
+                secondaryActionText = "actionText",
+                secondaryAction = Action.Dismiss,
+            ),
+            matchingRules = emptyList(),
+            exclusionRules = emptyList(),
+        )
     }
 }

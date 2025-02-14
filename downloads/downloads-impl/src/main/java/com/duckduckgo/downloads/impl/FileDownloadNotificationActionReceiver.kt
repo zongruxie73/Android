@@ -21,26 +21,28 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Environment
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.duckduckgo.app.di.AppCoroutineScope
-import com.duckduckgo.app.global.DispatcherProvider
+import com.duckduckgo.app.lifecycle.MainProcessLifecycleObserver
 import com.duckduckgo.app.statistics.pixels.Pixel
+import com.duckduckgo.common.utils.DispatcherProvider
+import com.duckduckgo.common.utils.extensions.registerNotExportedReceiver
 import com.duckduckgo.di.scopes.AppScope
 import com.duckduckgo.downloads.api.*
-import com.duckduckgo.downloads.impl.pixels.DownloadsPixelName
+import com.duckduckgo.downloads.api.FileDownloader.PendingFileDownload
+import com.duckduckgo.downloads.impl.pixels.DownloadsPixelName.DOWNLOAD_REQUEST_CANCELLED_BY_USER
+import com.duckduckgo.downloads.impl.pixels.DownloadsPixelName.DOWNLOAD_REQUEST_RETRIED
 import com.duckduckgo.downloads.store.DownloadStatus.STARTED
 import com.squareup.anvil.annotations.ContributesMultibinding
 import dagger.SingleInstanceIn
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import timber.log.Timber
-import javax.inject.Inject
+import logcat.logcat
 
 @ContributesMultibinding(
     scope = AppScope::class,
-    boundType = LifecycleObserver::class,
+    boundType = MainProcessLifecycleObserver::class,
 )
 @SingleInstanceIn(AppScope::class)
 class FileDownloadNotificationActionReceiver @Inject constructor(
@@ -51,12 +53,12 @@ class FileDownloadNotificationActionReceiver @Inject constructor(
     @AppCoroutineScope private val coroutineScope: CoroutineScope,
     private val dispatcherProvider: DispatcherProvider,
     private val pixel: Pixel,
-) : BroadcastReceiver(), DefaultLifecycleObserver {
+) : BroadcastReceiver(), MainProcessLifecycleObserver {
 
     override fun onCreate(owner: LifecycleOwner) {
         super.onCreate(owner)
-        Timber.v("Registering file download notification action receiver")
-        context.registerReceiver(this, IntentFilter(INTENT_DOWNLOADS_NOTIFICATION_ACTION))
+        logcat { "Registering file download notification action receiver" }
+        context.registerNotExportedReceiver(this, IntentFilter(INTENT_DOWNLOADS_NOTIFICATION_ACTION))
 
         // When the app process is killed and restarted, this onCreate method is called and we take the opportunity
         // to clean up the pending downloads that were in progress and will be no longer downloading.
@@ -79,22 +81,22 @@ class FileDownloadNotificationActionReceiver @Inject constructor(
         if (shouldDismissNotification(intent)) fileDownloadNotificationManager.cancelDownloadFileNotification(downloadId)
 
         if (isCancelIntent(intent)) {
-            Timber.v("Received cancel download intent for download id $downloadId")
-            pixel.fire(DownloadsPixelName.DOWNLOAD_REQUEST_CANCELLED_BY_USER)
+            logcat { "Received cancel download intent for download id $downloadId" }
+            pixel.fire(DOWNLOAD_REQUEST_CANCELLED_BY_USER)
 
             coroutineScope.launch(dispatcherProvider.io()) {
                 downloadsRepository.delete(downloadId)
             }
         } else if (isRetryIntent(intent)) {
-            Timber.v("Received retry download intent for download id $downloadId")
-            pixel.fire(DownloadsPixelName.DOWNLOAD_REQUEST_RETRIED)
+            logcat { "Received retry download intent for download id $downloadId" }
+            pixel.fire(DOWNLOAD_REQUEST_RETRIED)
 
             val url = extractUrlFromRetryIntent(intent) ?: return
-            FileDownloader.PendingFileDownload(
+            PendingFileDownload(
                 url = url,
                 subfolder = Environment.DIRECTORY_DOWNLOADS,
             ).run {
-                Timber.v("Retrying download for $url")
+                logcat { "Retrying download for $url" }
                 coroutineScope.launch(dispatcherProvider.io()) {
                     downloadsRepository.delete(downloadId)
                     fileDownloader.enqueueDownload(this@run)

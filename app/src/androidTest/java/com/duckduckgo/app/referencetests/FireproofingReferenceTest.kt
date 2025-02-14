@@ -16,34 +16,31 @@
 
 package com.duckduckgo.app.referencetests
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.os.Build
 import androidx.core.net.toUri
 import androidx.room.Room
 import androidx.test.platform.app.InstrumentationRegistry
-import com.duckduckgo.app.FileUtilities
 import com.duckduckgo.app.fire.WebViewDatabaseLocator
 import com.duckduckgo.app.fire.fireproofwebsite.data.FireproofWebsiteEntity
-import com.duckduckgo.app.fire.fireproofwebsite.data.FireproofWebsiteRepository
-import com.duckduckgo.app.global.DefaultDispatcherProvider
+import com.duckduckgo.app.fire.fireproofwebsite.data.FireproofWebsiteRepositoryImpl
 import com.duckduckgo.app.global.db.AppDatabase
-import com.duckduckgo.app.global.domain
-import com.duckduckgo.app.global.exception.RootExceptionFinder
-import com.duckduckgo.app.statistics.pixels.ExceptionPixel
-import com.duckduckgo.app.statistics.pixels.Pixel
-import com.duckduckgo.app.statistics.store.OfflinePixelCountDataStore
+import com.duckduckgo.common.test.FileUtilities
+import com.duckduckgo.common.utils.DefaultDispatcherProvider
+import com.duckduckgo.common.utils.domain
 import com.duckduckgo.cookies.impl.CookieManagerRemover
 import com.duckduckgo.cookies.impl.DefaultCookieManagerProvider
 import com.duckduckgo.cookies.impl.RemoveCookies
 import com.duckduckgo.cookies.impl.SQLCookieRemover
 import com.duckduckgo.cookies.impl.WebViewCookieManager
 import com.duckduckgo.privacy.config.impl.network.JSONObjectAdapter
-import org.mockito.kotlin.mock
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import org.junit.After
@@ -52,22 +49,19 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
+import org.mockito.kotlin.mock
 
-@ExperimentalCoroutinesApi
 @RunWith(Parameterized::class)
+@SuppressLint("NoHardcodedCoroutineDispatcher")
 class FireproofingReferenceTest(private val testCase: TestCase) {
 
     private val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
     private val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
     private val cookieManagerProvider = DefaultCookieManagerProvider()
-    private val cookieManager = cookieManagerProvider.get()
+    private val cookieManager = cookieManagerProvider.get()!!
     private val fireproofWebsiteDao = db.fireproofWebsiteDao()
-    private val mockPixel = mock<Pixel>()
-    private val mockOfflinePixelCountDataStore = mock<OfflinePixelCountDataStore>()
     private val webViewDatabaseLocator = WebViewDatabaseLocator(context)
-    private val fireproofWebsiteRepository = FireproofWebsiteRepository(fireproofWebsiteDao, DefaultDispatcherProvider(), mock())
+    private val fireproofWebsiteRepositoryImpl = FireproofWebsiteRepositoryImpl(fireproofWebsiteDao, DefaultDispatcherProvider(), mock())
     private lateinit var testee: WebViewCookieManager
 
     companion object {
@@ -81,8 +75,8 @@ class FireproofingReferenceTest(private val testCase: TestCase) {
             val referenceTest = adapter.fromJson(
                 FileUtilities.loadText(
                     FireproofingReferenceTest::class.java.classLoader!!,
-                    "reference_tests/fireproofing/tests.json"
-                )
+                    "reference_tests/fireproofing/tests.json",
+                ),
             )
             fireproofedSites = referenceTest?.fireButtonFireproofing?.fireproofedSites.orEmpty()
             return referenceTest?.fireButtonFireproofing?.tests?.filterNot { it.exceptPlatforms.contains("android-browser") } ?: emptyList()
@@ -93,10 +87,9 @@ class FireproofingReferenceTest(private val testCase: TestCase) {
     fun before() {
         val sqlCookieRemover = SQLCookieRemover(
             webViewDatabaseLocator,
-            fireproofWebsiteRepository,
-            mockOfflinePixelCountDataStore,
-            ExceptionPixel(mockPixel, RootExceptionFinder()),
-            DefaultDispatcherProvider()
+            fireproofWebsiteRepositoryImpl,
+            mock(),
+            DefaultDispatcherProvider(),
         )
 
         val removeCookiesStrategy = RemoveCookies(CookieManagerRemover(cookieManagerProvider), sqlCookieRemover)
@@ -104,7 +97,8 @@ class FireproofingReferenceTest(private val testCase: TestCase) {
         testee = WebViewCookieManager(cookieManagerProvider, removeCookiesStrategy, DefaultDispatcherProvider())
 
         fireproofedSites.map { url ->
-            fireproofWebsiteDao.insert(FireproofWebsiteEntity(url.toUri().domain().orEmpty()))
+            val domain = url.toUri().domain() ?: url
+            fireproofWebsiteDao.insert(FireproofWebsiteEntity(domain))
         }
     }
 
@@ -167,17 +161,17 @@ class FireproofingReferenceTest(private val testCase: TestCase) {
         val cookieDomain: String,
         val cookieName: String,
         val expectCookieRemoved: Boolean,
-        val exceptPlatforms: List<String>
+        val exceptPlatforms: List<String>,
     )
 
     data class FireproofTest(
         val name: String,
         val desc: String,
         val fireproofedSites: List<String>,
-        val tests: List<TestCase>
+        val tests: List<TestCase>,
     )
 
     data class ReferenceTest(
-        val fireButtonFireproofing: FireproofTest
+        val fireButtonFireproofing: FireproofTest,
     )
 }

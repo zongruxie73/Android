@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-apply from: "$rootDir/spotless.gradle"
+apply from: "$rootDir/code-formatting.gradle"
 
 android {
     compileSdkVersion compile_sdk
@@ -32,8 +32,7 @@ android {
 
     lint {
         abortOnError true
-        ignoreTestSources true
-        ignoreTestSources true
+        ignoreTestSources false
     }
 
     buildTypes {
@@ -43,8 +42,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlin {
+        jvmToolchain(17)
     }
     buildFeatures {
         viewBinding = true
@@ -68,10 +70,6 @@ tasks.register('jvm_checks') {
 
 tasks.register('jvm_tests') {
     dependsOn 'testDebugUnitTest'
-}
-
-tasks.register('spotless') {
-    dependsOn 'spotlessCheck'
 }
 
 tasks.register('lint_check') {

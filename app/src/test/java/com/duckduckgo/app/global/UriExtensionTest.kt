@@ -19,6 +19,19 @@ package com.duckduckgo.app.global
 import android.net.Uri
 import androidx.core.net.toUri
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.duckduckgo.common.utils.absoluteString
+import com.duckduckgo.common.utils.baseHost
+import com.duckduckgo.common.utils.domain
+import com.duckduckgo.common.utils.extractDomain
+import com.duckduckgo.common.utils.faviconLocation
+import com.duckduckgo.common.utils.hasIpHost
+import com.duckduckgo.common.utils.isHttp
+import com.duckduckgo.common.utils.isHttps
+import com.duckduckgo.common.utils.isHttpsVersionOfUri
+import com.duckduckgo.common.utils.isMobileSite
+import com.duckduckgo.common.utils.toDesktopUri
+import com.duckduckgo.common.utils.toStringDropScheme
+import com.duckduckgo.common.utils.withScheme
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -254,14 +267,6 @@ class UriExtensionTest {
     fun whenUriHasResourceNamePathAndParamsThenDropSchemeReturnResourceNamePathAndParams() {
         assertEquals("www.foo.com/path/to/foo?key=value", "https://www.foo.com/path/to/foo?key=value".toUri().toStringDropScheme())
         assertEquals("www.foo.com/path/to/foo?key=value", "http://www.foo.com/path/to/foo?key=value".toUri().toStringDropScheme())
-    }
-
-    @Test
-    fun whenUriExtractSchemeAndDomainThenReturnOnlySchemeAndDomain() {
-        assertEquals("https://www.foo.com", "https://www.foo.com/path/to/foo?key=value".extractSchemeAndDomain())
-        assertEquals("https://www.foo.com", "www.foo.com/path/to/foo?key=value".extractSchemeAndDomain())
-        assertEquals("https://foo.com", "foo.com/path/to/foo?key=value".extractSchemeAndDomain())
-        assertEquals("http://foo.com", "http://foo.com/path/to/foo?key=value".extractSchemeAndDomain())
     }
 
     @Test

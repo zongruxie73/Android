@@ -31,8 +31,8 @@ dependencies {
     implementation project(':app-build-config-api')
     implementation project(':library-loader-api')
 
-    implementation Kotlin.stdlib.jdk7
-    implementation JakeWharton.timber
+    implementation "com.squareup.logcat:logcat:_"
+    implementation "com.duckduckgo.netguard:netguard-android:_"
 
     implementation Google.dagger
     implementation AndroidX.core.ktx
@@ -46,23 +46,25 @@ dependencies {
 
     androidTestImplementation project(':common-test')
     testImplementation project(':common-test')
+
+    coreLibraryDesugaring Android.tools.desugarJdkLibs
 }
 
 android {
-    externalNativeBuild {
-
-        cmake {
-            path "CMakeLists.txt"
-        }
-    }
     anvil {
         generateDaggerFactories = true // default is false
+    }
+    lintOptions {
+        baseline file("lint-baseline.xml")
     }
     testOptions {
         unitTests {
             includeAndroidResources = true
         }
     }
-  namespace 'com.duckduckgo.vpn.network.impl'
+    compileOptions {
+        coreLibraryDesugaringEnabled = true
+    }
+    namespace 'com.duckduckgo.vpn.network.impl'
 }
 

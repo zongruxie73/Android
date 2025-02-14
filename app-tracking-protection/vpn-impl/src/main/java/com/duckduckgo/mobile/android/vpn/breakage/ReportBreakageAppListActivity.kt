@@ -29,53 +29,79 @@ import android.text.style.ForegroundColorSpan
 import android.text.style.UnderlineSpan
 import android.view.View
 import android.widget.Toast
-import androidx.core.content.ContextCompat
+import androidx.activity.result.ActivityResultLauncher
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.duckduckgo.anvil.annotations.ContributeToActivityStarter
 import com.duckduckgo.anvil.annotations.InjectWith
-import com.duckduckgo.app.global.DuckDuckGoActivity
+import com.duckduckgo.common.ui.DuckDuckGoActivity
+import com.duckduckgo.common.ui.view.getColorFromAttr
+import com.duckduckgo.common.ui.view.gone
+import com.duckduckgo.common.ui.viewbinding.viewBinding
 import com.duckduckgo.di.scopes.ActivityScope
-import com.duckduckgo.mobile.android.ui.view.gone
-import com.duckduckgo.mobile.android.ui.viewbinding.viewBinding
 import com.duckduckgo.mobile.android.vpn.R
 import com.duckduckgo.mobile.android.vpn.databinding.ActivityReportBreakageAppListBinding
+import com.duckduckgo.mobile.android.vpn.di.AppTpBreakageCategories
 import com.duckduckgo.mobile.android.vpn.pixels.DeviceShieldPixels
+import com.duckduckgo.mobile.android.vpn.ui.AppBreakageCategory
+import com.duckduckgo.mobile.android.vpn.ui.OpenVpnReportBreakageFrom
+import com.duckduckgo.navigation.api.getActivityParams
+import javax.inject.Inject
+import javax.inject.Provider
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @InjectWith(ActivityScope::class)
+@ContributeToActivityStarter(OpenVpnReportBreakageFrom::class)
 class ReportBreakageAppListActivity : DuckDuckGoActivity(), ReportBreakageAppListAdapter.Listener {
 
     @Inject
     lateinit var deviceShieldPixels: DeviceShieldPixels
 
+    @Inject
+    lateinit var appFeedbackContract: Provider<AppFeedbackContract>
+
+    @Inject
+    lateinit var reportBreakageContract: Provider<ReportBreakageContract>
+
+    @Inject
+    @AppTpBreakageCategories
+    lateinit var breakageCategories: List<AppBreakageCategory>
+
     private val viewModel: ReportBreakageAppListViewModel by bindViewModel()
 
     private lateinit var adapter: ReportBreakageAppListAdapter
+
+    private lateinit var launchedFrom: String
 
     private val binding: ActivityReportBreakageAppListBinding by viewBinding()
 
     private val toolbar
         get() = binding.includeToolbar.toolbar
 
-    private val reportBreakage = registerForActivityResult(ReportBreakageContract()) { result ->
-        if (!result.isEmpty()) {
-            viewModel.onBreakageSubmitted(result)
-        }
-    }
+    private lateinit var reportBreakage: ActivityResultLauncher<ReportBreakageScreen>
 
-    private val sendAppFeedback = registerForActivityResult(AppFeedbackContract()) { resultOk ->
-        if (resultOk) {
-            Toast.makeText(this, R.string.atp_ThanksForTheFeedback, Toast.LENGTH_LONG).show()
-            finish()
-        }
-    }
+    private lateinit var sendAppFeedback: ActivityResultLauncher<Void?>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        reportBreakage = registerForActivityResult(reportBreakageContract.get()) { result ->
+            if (!result.isEmpty()) {
+                viewModel.onBreakageSubmitted(result)
+            }
+        }
+
+        sendAppFeedback = registerForActivityResult(appFeedbackContract.get()) { resultOk ->
+            if (resultOk) {
+                Toast.makeText(this, R.string.atp_ThanksForTheFeedback, Toast.LENGTH_LONG).show()
+                finish()
+            }
+        }
+
+        launchedFrom = intent.getActivityParams(OpenVpnReportBreakageFrom::class.java)?.launchFrom ?: "unknown"
 
         setContentView(binding.root)
         setupToolbar(toolbar)
@@ -91,6 +117,7 @@ class ReportBreakageAppListActivity : DuckDuckGoActivity(), ReportBreakageAppLis
     }
 
     override fun onBackPressed() {
+        super.onBackPressed()
         onSupportNavigateUp()
     }
 
@@ -101,7 +128,7 @@ class ReportBreakageAppListActivity : DuckDuckGoActivity(), ReportBreakageAppLis
 
     override fun onInstalledAppSelected(
         installedApp: InstalledApp,
-        position: Int
+        position: Int,
     ) {
         viewModel.onAppSelected(installedApp)
     }
@@ -109,7 +136,7 @@ class ReportBreakageAppListActivity : DuckDuckGoActivity(), ReportBreakageAppLis
     private fun addClickableLink(
         annotation: String,
         text: CharSequence,
-        onClick: () -> Unit
+        onClick: () -> Unit,
     ): SpannableString {
         val fullText = text as SpannedString
         val spannableString = SpannableString(fullText)
@@ -126,21 +153,21 @@ class ReportBreakageAppListActivity : DuckDuckGoActivity(), ReportBreakageAppLis
                     clickableSpan,
                     fullText.getSpanStart(it),
                     fullText.getSpanEnd(it),
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
                 )
                 setSpan(
                     UnderlineSpan(),
                     fullText.getSpanStart(it),
                     fullText.getSpanEnd(it),
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
                 )
                 setSpan(
                     ForegroundColorSpan(
-                        ContextCompat.getColor(baseContext, com.duckduckgo.mobile.android.R.color.cornflowerBlue)
+                        getColorFromAttr(com.duckduckgo.mobile.android.R.attr.daxColorAccentBlue),
                     ),
                     fullText.getSpanStart(it),
                     fullText.getSpanEnd(it),
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
                 )
             }
         }
@@ -156,7 +183,7 @@ class ReportBreakageAppListActivity : DuckDuckGoActivity(), ReportBreakageAppLis
         with(binding.appBreakageReportFeature) {
             text = addClickableLink(
                 USE_THIS_FORM_ANNOTATION,
-                getText(R.string.atp_ReportBreakageAppFeature)
+                getText(R.string.atp_ReportBreakageAppFeature),
             ) { sendAppFeedback.launch(null) }
             movementMethod = LinkMovementMethod.getInstance()
         }
@@ -184,9 +211,11 @@ class ReportBreakageAppListActivity : DuckDuckGoActivity(), ReportBreakageAppLis
             is ReportBreakageAppListView.Command.LaunchBreakageForm -> {
                 reportBreakage.launch(
                     ReportBreakageScreen.IssueDescriptionForm(
+                        origin = runCatching { launchedFrom }.getOrDefault("unknown"),
+                        breakageCategories = breakageCategories,
                         appName = command.selectedApp.name,
-                        appPackageId = command.selectedApp.packageName
-                    )
+                        appPackageId = command.selectedApp.packageName,
+                    ),
                 )
             }
             is ReportBreakageAppListView.Command.SendBreakageInfo -> {
@@ -208,7 +237,7 @@ class ReportBreakageAppListActivity : DuckDuckGoActivity(), ReportBreakageAppLis
 
     companion object {
         private const val USE_THIS_FORM_ANNOTATION = "use_this_form_link"
-        fun intent(context: Context): Intent {
+        internal fun intent(context: Context): Intent {
             return Intent(context, ReportBreakageAppListActivity::class.java)
         }
     }

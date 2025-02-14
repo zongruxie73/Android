@@ -18,9 +18,10 @@ package com.duckduckgo.vpn.internal.flipper
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.os.Build
 import android.preference.PreferenceManager
 import androidx.core.content.edit
+import com.duckduckgo.app.di.AppCoroutineScope
+import com.duckduckgo.common.utils.DispatcherProvider
 import com.duckduckgo.di.scopes.AppScope
 import com.facebook.flipper.core.FlipperConnection
 import com.facebook.flipper.core.FlipperObject
@@ -30,13 +31,19 @@ import com.frybits.harmony.getHarmonySharedPreferences
 import com.squareup.anvil.annotations.ContributesMultibinding
 import java.io.File
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 private const val XML_SUFFIX = ".xml"
 private const val SHARED_PREFS_DIR = "shared_prefs"
 private const val HARMONY_PREFS_DIR = "harmony_prefs"
 
 @ContributesMultibinding(AppScope::class)
-class PreferencesFlipperPlugin @Inject constructor(context: Context) : FlipperPlugin {
+class PreferencesFlipperPlugin @Inject constructor(
+    context: Context,
+    @AppCoroutineScope coroutineScope: CoroutineScope,
+    dispatcherProvider: DispatcherProvider,
+) : FlipperPlugin {
 
     private var connection: FlipperConnection? = null
 
@@ -51,22 +58,24 @@ class PreferencesFlipperPlugin @Inject constructor(context: Context) : FlipperPl
                 .put("deleted", !sharedPreferences.contains(key))
                 .put("time", System.currentTimeMillis())
                 .put("value", sharedPreferences.all[key])
-                .build()
+                .build(),
         )
     }
 
     private lateinit var sharedPreferences: Map<SharedPreferences, SharedPreferencesDescriptor>
 
     init {
-        val descriptors = buildDescriptorForAllPrefsFiles(context)
-        val prefs = HashMap<SharedPreferences, SharedPreferencesDescriptor>(descriptors.size)
-        descriptors.forEach { descriptor ->
-            descriptor.getSharedPreferences(context).run {
-                registerOnSharedPreferenceChangeListener(onSharedPreferenceChangeListener)
-                prefs[this] = descriptor
+        coroutineScope.launch(dispatcherProvider.io()) {
+            val descriptors = buildDescriptorForAllPrefsFiles(context)
+            val prefs = HashMap<SharedPreferences, SharedPreferencesDescriptor>(descriptors.size)
+            descriptors.forEach { descriptor ->
+                descriptor.getSharedPreferences(context).run {
+                    registerOnSharedPreferenceChangeListener(onSharedPreferenceChangeListener)
+                    prefs[this] = descriptor
+                }
             }
+            sharedPreferences = prefs
         }
-        sharedPreferences = prefs
     }
 
     override fun getId(): String = "Preferences"
@@ -75,7 +84,7 @@ class PreferencesFlipperPlugin @Inject constructor(context: Context) : FlipperPl
         this.connection = connection
 
         connection!!.receive(
-            "getAllSharedPreferences"
+            "getAllSharedPreferences",
         ) { _, responder ->
             val builder = FlipperObject.Builder()
             for ((key, value) in sharedPreferences.entries) {
@@ -91,7 +100,7 @@ class PreferencesFlipperPlugin @Inject constructor(context: Context) : FlipperPl
                 if (name != null) {
                     responder.success(getFlipperObjectFor(name))
                 }
-            }
+            },
         )
 
         connection.receive(
@@ -124,7 +133,7 @@ class PreferencesFlipperPlugin @Inject constructor(context: Context) : FlipperPl
                     }
                 }
                 responder.success(getFlipperObjectFor(sharedPreferencesName))
-            }
+            },
         )
 
         connection.receive(
@@ -136,9 +145,8 @@ class PreferencesFlipperPlugin @Inject constructor(context: Context) : FlipperPl
                     remove(preferenceName)
                 }
                 responder.success(getFlipperObjectFor(sharedPreferencesName))
-            }
+            },
         )
-
     }
 
     override fun onDisconnect() {
@@ -149,7 +157,7 @@ class PreferencesFlipperPlugin @Inject constructor(context: Context) : FlipperPl
 
     private data class SharedPreferencesDescriptor(
         val name: String,
-        val mode: Int
+        val mode: Int,
     ) {
         fun getSharedPreferences(context: Context): SharedPreferences {
             return if (mode == Context.MODE_MULTI_PROCESS) {
@@ -203,11 +211,7 @@ class PreferencesFlipperPlugin @Inject constructor(context: Context) : FlipperPl
         }
 
         private fun getDefaultSharedPreferencesName(context: Context): String {
-            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                PreferenceManager.getDefaultSharedPreferencesName(context)
-            } else {
-                context.packageName + "_preferences"
-            }
+            return PreferenceManager.getDefaultSharedPreferencesName(context)
         }
     }
 }

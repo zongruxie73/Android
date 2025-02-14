@@ -17,16 +17,16 @@
 package com.duckduckgo.app.global.api
 
 import android.content.Context
-import com.duckduckgo.app.browser.useragent.UserAgentProvider
-import com.duckduckgo.app.global.AppUrl
 import com.duckduckgo.appbuildconfig.api.AppBuildConfig
+import com.duckduckgo.common.utils.AppUrl
+import com.duckduckgo.user.agent.api.UserAgentProvider
 import okhttp3.Interceptor
 import okhttp3.Response
 
 class ApiRequestInterceptor(
     context: Context,
     private val userAgentProvider: UserAgentProvider,
-    private val appBuildConfig: AppBuildConfig
+    private val appBuildConfig: AppBuildConfig,
 ) : Interceptor {
 
     private val userAgent: String by lazy {

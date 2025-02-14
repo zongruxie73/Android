@@ -17,7 +17,6 @@
 package com.duckduckgo.mobile.android.vpn.ui.tracker_activity
 
 import android.content.Context
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -27,29 +26,30 @@ import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
-import com.duckduckgo.mobile.android.ui.TextDrawable
-import com.duckduckgo.mobile.android.ui.view.Chip
-import com.duckduckgo.mobile.android.ui.view.gone
-import com.duckduckgo.mobile.android.ui.view.show
+import com.duckduckgo.common.ui.view.Chip
+import com.duckduckgo.common.ui.view.gone
+import com.duckduckgo.common.ui.view.show
 import com.duckduckgo.mobile.android.vpn.R
+import com.duckduckgo.mobile.android.vpn.ui.util.TextDrawable
+import java.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.*
 
+@Suppress("NoHardcodedCoroutineDispatcher")
 class AppTPCompanyDetailsAdapter : RecyclerView.Adapter<AppTPCompanyDetailsAdapter.CompanyDetailsViewHolder>() {
 
     private val items = mutableListOf<AppTPCompanyTrackersViewModel.CompanyTrackingDetails>()
 
     override fun onCreateViewHolder(
         parent: ViewGroup,
-        viewType: Int
+        viewType: Int,
     ): CompanyDetailsViewHolder {
         return CompanyDetailsViewHolder.create(parent)
     }
 
     override fun onBindViewHolder(
         holder: CompanyDetailsViewHolder,
-        position: Int
+        position: Int,
     ) {
         val companyTrackingDetails = items[position]
         holder.bind(companyTrackingDetails) { expanded ->
@@ -87,7 +87,7 @@ class AppTPCompanyDetailsAdapter : RecyclerView.Adapter<AppTPCompanyDetailsAdapt
 
     private class DiffCallback(
         private val old: List<AppTPCompanyTrackersViewModel.CompanyTrackingDetails>,
-        private val new: List<AppTPCompanyTrackersViewModel.CompanyTrackingDetails>
+        private val new: List<AppTPCompanyTrackersViewModel.CompanyTrackingDetails>,
     ) :
         DiffUtil.Callback() {
         override fun getOldListSize() = old.size
@@ -96,14 +96,14 @@ class AppTPCompanyDetailsAdapter : RecyclerView.Adapter<AppTPCompanyDetailsAdapt
 
         override fun areItemsTheSame(
             oldItemPosition: Int,
-            newItemPosition: Int
+            newItemPosition: Int,
         ): Boolean {
             return old[oldItemPosition].companyName == new[newItemPosition].companyName
         }
 
         override fun areContentsTheSame(
             oldItemPosition: Int,
-            newItemPosition: Int
+            newItemPosition: Int,
         ): Boolean {
             return old[oldItemPosition] == new[newItemPosition]
         }
@@ -119,17 +119,17 @@ class AppTPCompanyDetailsAdapter : RecyclerView.Adapter<AppTPCompanyDetailsAdapt
             }
         }
 
-        var badgeImage: ImageView = view.findViewById(R.id.tracking_company_icon)
-        var companyName: TextView = view.findViewById(R.id.tracking_company_name)
-        var trackingAttempts: TextView = view.findViewById(R.id.tracking_company_attempts)
-        var showMore: TextView = view.findViewById(R.id.tracking_company_show_more)
-        var topSignalsLayout: LinearLayout = view.findViewById(R.id.tracking_company_top_signals)
-        var bottomSignalsLayout: LinearLayout = view.findViewById(R.id.tracking_company_bottom_signals)
-        var showLess: TextView = view.findViewById(R.id.tracking_company_show_less)
+        private var badgeImage: ImageView = view.findViewById(R.id.tracking_company_icon)
+        private var companyName: TextView = view.findViewById(R.id.tracking_company_name)
+        private var trackingAttempts: TextView = view.findViewById(R.id.tracking_company_attempts)
+        private var showMore: TextView = view.findViewById(R.id.tracking_company_show_more)
+        private var topSignalsLayout: LinearLayout = view.findViewById(R.id.tracking_company_top_signals)
+        private var bottomSignalsLayout: LinearLayout = view.findViewById(R.id.tracking_company_bottom_signals)
+        private var showLess: TextView = view.findViewById(R.id.tracking_company_show_less)
 
         fun bind(
             companyDetails: AppTPCompanyTrackersViewModel.CompanyTrackingDetails,
-            onExpanded: (Boolean) -> Unit
+            onExpanded: (Boolean) -> Unit,
         ) {
             val badge = badgeIcon(view.context, companyDetails.companyName)
             if (badge == null) {
@@ -138,7 +138,7 @@ class AppTPCompanyDetailsAdapter : RecyclerView.Adapter<AppTPCompanyDetailsAdapt
                         .beginConfig()
                         .fontSize(50)
                         .endConfig()
-                        .buildRound(companyDetails.companyName.take(1), Color.DKGRAY)
+                        .buildRound(companyDetails.companyName.take(1)),
                 )
             } else {
                 badgeImage.setImageResource(badge)
@@ -147,7 +147,8 @@ class AppTPCompanyDetailsAdapter : RecyclerView.Adapter<AppTPCompanyDetailsAdapt
             companyName.text = companyDetails.companyDisplayName
             trackingAttempts.text = view.context.resources.getQuantityString(
                 R.plurals.atp_CompanyDetailsTrackingAttempts,
-                companyDetails.trackingAttempts, companyDetails.trackingAttempts
+                companyDetails.trackingAttempts,
+                companyDetails.trackingAttempts,
             )
 
             val inflater = LayoutInflater.from(view.context)
@@ -176,7 +177,7 @@ class AppTPCompanyDetailsAdapter : RecyclerView.Adapter<AppTPCompanyDetailsAdapt
                 showMore.gone()
             }
 
-            showMore.text = String.format(view.context.getString(R.string.atp_CompanyDetailsTrackingShowMore, bottomSignals.size))
+            showMore.text = view.context.getString(R.string.atp_CompanyDetailsTrackingShowMore, bottomSignals.size)
             showMore.setOnClickListener {
                 if (!bottomSignalsLayout.isVisible) {
                     showMore()
@@ -209,7 +210,7 @@ class AppTPCompanyDetailsAdapter : RecyclerView.Adapter<AppTPCompanyDetailsAdapt
         private fun badgeIcon(
             context: Context,
             networkName: String,
-            prefix: String = "tracking_network_logo_"
+            prefix: String = "tracking_network_logo_",
         ): Int? {
             val drawable = "$prefix$networkName"
                 .replace(" ", "_")

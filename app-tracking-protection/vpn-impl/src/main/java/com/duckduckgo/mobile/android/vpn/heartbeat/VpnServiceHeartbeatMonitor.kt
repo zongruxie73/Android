@@ -19,19 +19,19 @@ package com.duckduckgo.mobile.android.vpn.heartbeat
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.work.*
 import com.duckduckgo.anvil.annotations.ContributesWorker
 import com.duckduckgo.anvil.annotations.InjectWith
+import com.duckduckgo.app.lifecycle.MainProcessLifecycleObserver
+import com.duckduckgo.common.utils.DispatcherProvider
 import com.duckduckgo.di.scopes.AppScope
 import com.duckduckgo.di.scopes.ReceiverScope
 import com.duckduckgo.mobile.android.vpn.dao.HeartBeatEntity
-import com.duckduckgo.mobile.android.vpn.pixels.DeviceShieldPixels
 import com.duckduckgo.mobile.android.vpn.dao.VpnHeartBeatDao
-import com.duckduckgo.mobile.android.vpn.dao.VpnPhoenixDao
-import com.duckduckgo.mobile.android.vpn.dao.VpnPhoenixEntity
+import com.duckduckgo.mobile.android.vpn.dao.VpnServiceStateStatsDao
+import com.duckduckgo.mobile.android.vpn.model.VpnServiceState
+import com.duckduckgo.mobile.android.vpn.pixels.DeviceShieldPixels
 import com.duckduckgo.mobile.android.vpn.service.TrackerBlockingVpnService
 import com.duckduckgo.mobile.android.vpn.store.VpnDatabase
 import com.squareup.anvil.annotations.ContributesTo
@@ -39,29 +39,29 @@ import dagger.Module
 import dagger.Provides
 import dagger.android.AndroidInjection
 import dagger.multibindings.IntoSet
-import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import logcat.LogPriority
+import logcat.logcat
 
 @Module
 @ContributesTo(AppScope::class)
 class VpnServiceHeartbeatMonitorModule {
     @Provides
     @IntoSet
-    fun provideVpnServiceHeartbeatMonitor(workManager: WorkManager): LifecycleObserver {
+    fun provideVpnServiceHeartbeatMonitor(workManager: WorkManager): MainProcessLifecycleObserver {
         return VpnServiceHeartbeatMonitor(workManager)
     }
-
-    @Provides
-    fun providesVpnPhoenixDao(vpnDatabase: VpnDatabase): VpnPhoenixDao = vpnDatabase.vpnPhoenixDao()
 
     @Provides
     fun providesVpnHeartBeatDao(vpnDatabase: VpnDatabase): VpnHeartBeatDao = vpnDatabase.vpnHeartBeatDao()
 }
 
 class VpnServiceHeartbeatMonitor(
-    private val workManager: WorkManager
-) : DefaultLifecycleObserver {
+    private val workManager: WorkManager,
+) : MainProcessLifecycleObserver {
 
     override fun onCreate(owner: LifecycleOwner) {
         startHeartbeatMonitor(workManager)
@@ -73,7 +73,7 @@ class VpnServiceHeartbeatMonitor(
         private const val WORKER_HEART_BEAT_MONITOR_TAG = "VpnServiceHeartbeatMonitorWorker"
 
         fun startHeartbeatMonitor(workManager: WorkManager) {
-            Timber.v("(Re)Scheduling the VpnServiceHeartbeatMonitor worker")
+            logcat { "(Re)Scheduling the VpnServiceHeartbeatMonitor worker" }
             workManager.cancelAllWorkByTag(WORKER_HEART_BEAT_MONITOR_TAG)
 
             val request = PeriodicWorkRequestBuilder<VpnServiceHeartbeatMonitorWorker>(15, TimeUnit.MINUTES)
@@ -89,30 +89,43 @@ class VpnServiceHeartbeatMonitor(
 @ContributesWorker(AppScope::class)
 class VpnServiceHeartbeatMonitorWorker(
     val context: Context,
-    params: WorkerParameters
+    params: WorkerParameters,
 ) : CoroutineWorker(context, params) {
-    @Inject
-    lateinit var vpnPhoenixDao: VpnPhoenixDao
+
     @Inject
     lateinit var vpnHeartBeatDao: VpnHeartBeatDao
+
     @Inject
     lateinit var deviceShieldPixels: DeviceShieldPixels
 
-    override suspend fun doWork(): Result {
+    @Inject
+    lateinit var dispatcherProvider: DispatcherProvider
+
+    @Inject
+    lateinit var vpnServiceStateStatsDao: VpnServiceStateStatsDao
+
+    override suspend fun doWork(): Result = withContext(dispatcherProvider.io()) {
         val lastHeartBeat = vpnHeartBeatDao.hearBeats().maxByOrNull { it.timestamp }
 
-        Timber.d("HB monitor checking last HB: $lastHeartBeat")
+        logcat { "HB monitor checking last HB: $lastHeartBeat" }
         if (lastHeartBeat?.isAlive() == true && !TrackerBlockingVpnService.isServiceRunning(context)) {
-            Timber.w("HB monitor: VPN stopped, restarting it")
+            logcat(LogPriority.WARN) { "HB monitor: VPN stopped, restarting it" }
 
-            vpnPhoenixDao.insert(VpnPhoenixEntity(reason = HeartBeatUtils.getAppExitReason(context)))
+            // TODO this is for now just in NetP, move it to public repo once tested
+            // Just make sure the internal state is consistent with the actual state before we re-start the VPN service
+            vpnServiceStateStatsDao.getLastStateStats()?.let {
+                vpnServiceStateStatsDao.insert(it.copy(state = VpnServiceState.DISABLED, timestamp = System.currentTimeMillis()))
+            }
 
             deviceShieldPixels.suddenKillBySystem()
             deviceShieldPixels.automaticRestart()
+            // this worker is called as soon as the app is launched, and it tries to restart the VPN. There is some state that needs to settle
+            // before that, giving it a bit of time
+            delay(2_000)
             TrackerBlockingVpnService.startService(context)
         }
 
-        return Result.success()
+        return@withContext Result.success()
     }
 
     private fun HeartBeatEntity.isAlive(): Boolean {
@@ -127,12 +140,12 @@ class VpnHeartbeatDeviceBootMonitor : BroadcastReceiver() {
 
     override fun onReceive(
         context: Context,
-        intent: Intent
+        intent: Intent,
     ) {
         AndroidInjection.inject(this, context)
 
         if (intent.action == "android.intent.action.BOOT_COMPLETED") {
-            Timber.v("Checking if VPN was running before device BOOT")
+            logcat { "Checking if VPN was running before device BOOT" }
 
             VpnServiceHeartbeatMonitor.startHeartbeatMonitor(workManager)
         }

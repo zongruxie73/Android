@@ -28,8 +28,8 @@ import com.duckduckgo.app.feedback.ui.negative.FeedbackType.SubReason
 import com.duckduckgo.app.feedback.ui.negative.FeedbackTypeDisplay.Companion.mainReasons
 import com.duckduckgo.app.feedback.ui.negative.FeedbackTypeDisplay.Companion.subReasons
 import com.duckduckgo.app.feedback.ui.negative.openended.ShareOpenEndedNegativeFeedbackViewModel.Command
+import com.duckduckgo.common.ui.viewbinding.viewBinding
 import com.duckduckgo.di.scopes.FragmentScope
-import com.duckduckgo.mobile.android.ui.viewbinding.viewBinding
 
 @InjectWith(FragmentScope::class)
 class ShareOpenEndedFeedbackFragment : FeedbackFragment(R.layout.content_feedback_open_ended_feedback) {
@@ -38,7 +38,7 @@ class ShareOpenEndedFeedbackFragment : FeedbackFragment(R.layout.content_feedbac
         fun userProvidedNegativeOpenEndedFeedback(
             mainReason: MainReason,
             subReason: SubReason?,
-            feedback: String
+            feedback: String,
         )
 
         fun userProvidedPositiveOpenEndedFeedback(feedback: String)
@@ -92,7 +92,7 @@ class ShareOpenEndedFeedbackFragment : FeedbackFragment(R.layout.content_feedbac
     private fun updateDisplayForPositiveFeedback() {
         binding.title.text = getString(R.string.feedbackShareDetails)
         binding.subtitle.text = getString(R.string.sharePositiveFeedbackWithTheTeam)
-        binding.openEndedFeedbackContainer.hint = getString(R.string.whatHaveYouBeenEnjoying)
+        binding.openEndedFeedback.hint = getString(R.string.whatHaveYouBeenEnjoying)
         binding.emoticonImage.setImageResource(R.drawable.ic_happy_face)
     }
 
@@ -102,7 +102,7 @@ class ShareOpenEndedFeedbackFragment : FeedbackFragment(R.layout.content_feedbac
 
         binding.title.text = getDisplayText(mainReason!!)
         binding.subtitle.text = getDisplayText(subReason)
-        binding.openEndedFeedbackContainer.hint = getInputHintText(mainReason!!)
+        binding.openEndedFeedback.hint = getInputHintText(mainReason!!)
         binding.emoticonImage.setImageResource(R.drawable.ic_sad_face)
     }
 
@@ -127,7 +127,7 @@ class ShareOpenEndedFeedbackFragment : FeedbackFragment(R.layout.content_feedbac
     override fun configureListeners() {
         with(binding) {
             rootScrollView.doOnNextLayout {
-                binding.openEndedFeedback.setOnTouchListener(LayoutScrollingTouchListener(rootScrollView, openEndedFeedbackContainer.y.toInt()))
+                binding.openEndedFeedback.setOnTouchListener(LayoutScrollingTouchListener(rootScrollView, openEndedFeedback.y.toInt()))
             }
 
             submitFeedbackButton.setOnClickListener {
@@ -149,7 +149,7 @@ class ShareOpenEndedFeedbackFragment : FeedbackFragment(R.layout.content_feedbac
 
         fun instanceNegativeFeedback(
             mainReason: MainReason,
-            subReason: SubReason?
+            subReason: SubReason?,
         ): ShareOpenEndedFeedbackFragment {
             val fragment = ShareOpenEndedFeedbackFragment()
             fragment.arguments = Bundle().also {

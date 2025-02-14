@@ -15,98 +15,107 @@
   -->
 
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    tools:context=".MacOsActivity">
+              xmlns:app="http://schemas.android.com/apk/res-auto"
+              xmlns:tools="http://schemas.android.com/tools"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical"
+              tools:context="com.duckduckgo.macos.impl.MacOsActivity">
 
     <include
-        android:id="@+id/includeToolbar"
-        layout="@layout/include_default_toolbar" />
+            android:id="@+id/includeToolbar"
+            layout="@layout/include_default_toolbar"/>
 
     <ScrollView
-        android:fillViewport="true"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
+            android:fillViewport="true"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
 
         <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <androidx.appcompat.widget.AppCompatImageView
-                android:id="@+id/headerImage"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:layout_marginTop="18dp"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_privacy_simplified" />
-
-            <TextView
-                android:id="@+id/statusTitle"
-                style="@style/TextAppearance.DuckDuckGo.Headline2"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginTop="12dp"
-                android:layout_marginEnd="32dp"
-                android:text="@string/macos_title"
-                android:textAlignment="center"
-                android:textColor="?attr/settingsItemTextColor"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintBottom_toTopOf="@id/waitlistDescription"
-                app:layout_constraintTop_toBottomOf="@+id/headerImage" />
+                android:layout_height="wrap_content">
 
-            <TextView
-                android:id="@+id/waitlistDescription"
-                style="@style/TextAppearance.DuckDuckGo.Body1"
+            <ImageView
+                    android:id="@+id/headerImage"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginTop="18dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:srcCompat="@drawable/ic_computer_mac"/>
+
+            <com.duckduckgo.common.ui.view.text.DaxTextView
+                    android:id="@+id/statusTitle"
+                    app:typography="h1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/macos_title"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintBottom_toTopOf="@id/waitlistDescription"
+                    app:layout_constraintTop_toBottomOf="@+id/headerImage"/>
+
+            <com.duckduckgo.common.ui.view.text.DaxTextView
+                    android:id="@+id/waitlistDescription"
+                    app:typography="body1"
+                    app:textType="secondary"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="24dp"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginEnd="24dp"
+                    android:text="@string/macos_description_text"
+                    android:gravity="center"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/statusTitle"
+                    app:layout_constraintWidth_max="420dp" />
+
+            <com.duckduckgo.common.ui.view.text.DaxTextView
+                android:id="@+id/waitlistDescriptionLink"
+                app:typography="body1_bold"
+                android:textColor="?daxColorAccentBlue"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="24dp"
-                android:layout_marginTop="16dp"
                 android:layout_marginEnd="24dp"
-                android:lineSpacingExtra="0.7sp"
-                android:text="@string/macos_description_text"
-                android:textAlignment="center"
-                android:textColor="?attr/settingsMinorTextColor"
+                android:text="@string/macos_description_link"
+                android:gravity="center"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/statusTitle" />
+                app:layout_constraintTop_toBottomOf="@+id/waitlistDescription" />
 
-            <com.duckduckgo.mobile.android.ui.view.button.ButtonPrimaryLowercase
+            <com.duckduckgo.common.ui.view.button.DaxButtonPrimary
                 android:id="@+id/shareButton"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="24dp"
                 android:layout_marginTop="38dp"
                 android:layout_marginEnd="24dp"
                 android:text="@string/macos_share_title"
+                app:buttonSize="large"
+                app:layout_constraintBottom_toTopOf="@id/lookingForWindowsVersionButton"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/waitlistDescription" />
+                app:layout_constraintTop_toBottomOf="@+id/waitlistDescriptionLink"
+                app:layout_constraintVertical_bias="0.0"
+                app:layout_constraintWidth_max="420dp" />
 
-            <TextView
-                android:id="@+id/footerDescription"
-                style="@style/TextAppearance.DuckDuckGo.Caption"
-                android:layout_width="match_parent"
+            <com.duckduckgo.common.ui.view.button.DaxButtonGhost
+                android:id="@+id/lookingForWindowsVersionButton"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp"
-                android:layout_marginBottom="24dp"
-                android:gravity="bottom|center_horizontal"
-                android:text="@string/macos_windows"
-                android:textColor="?attr/settingsMinorTextColor"
+                app:buttonSize="small"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent" />
+                app:layout_constraintStart_toStartOf="parent"
+                android:layout_marginBottom="@dimen/keyline_4"
+                android:text="@string/macos_waitlist_windows_link"/>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
-
     </ScrollView>
 </LinearLayout>
 

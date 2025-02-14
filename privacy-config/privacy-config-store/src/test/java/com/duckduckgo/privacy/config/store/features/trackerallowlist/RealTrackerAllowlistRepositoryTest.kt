@@ -16,15 +16,10 @@
 
 package com.duckduckgo.privacy.config.store.features.trackerallowlist
 
-import com.duckduckgo.app.CoroutineTestRule
+import com.duckduckgo.common.test.CoroutineTestRule
 import com.duckduckgo.privacy.config.store.AllowlistRuleEntity
 import com.duckduckgo.privacy.config.store.PrivacyConfigDatabase
 import com.duckduckgo.privacy.config.store.TrackerAllowlistEntity
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.reset
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
@@ -32,8 +27,11 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.ArgumentMatchers.anyList
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.reset
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
-@ExperimentalCoroutinesApi
 class RealTrackerAllowlistRepositoryTest {
 
     @get:Rule var coroutineRule = CoroutineTestRule()
@@ -48,7 +46,10 @@ class RealTrackerAllowlistRepositoryTest {
         whenever(mockDatabase.trackerAllowlistDao()).thenReturn(mockTrackerAllowlistDao)
         testee =
             RealTrackerAllowlistRepository(
-                mockDatabase, TestScope(), coroutineRule.testDispatcherProvider
+                mockDatabase,
+                TestScope(),
+                coroutineRule.testDispatcherProvider,
+                isMainProcess = true,
             )
     }
 
@@ -58,7 +59,10 @@ class RealTrackerAllowlistRepositoryTest {
 
         testee =
             RealTrackerAllowlistRepository(
-                mockDatabase, TestScope(), coroutineRule.testDispatcherProvider
+                mockDatabase,
+                TestScope(),
+                coroutineRule.testDispatcherProvider,
+                isMainProcess = true,
             )
 
         assertEquals(trackerAllowlistEntity, testee.exceptions.first())
@@ -69,7 +73,10 @@ class RealTrackerAllowlistRepositoryTest {
         runTest {
             testee =
                 RealTrackerAllowlistRepository(
-                    mockDatabase, TestScope(), coroutineRule.testDispatcherProvider
+                    mockDatabase,
+                    TestScope(),
+                    coroutineRule.testDispatcherProvider,
+                    isMainProcess = true,
                 )
 
             testee.updateAll(listOf())
@@ -83,7 +90,10 @@ class RealTrackerAllowlistRepositoryTest {
             givenHttpsDaoContainsExceptions()
             testee =
                 RealTrackerAllowlistRepository(
-                    mockDatabase, TestScope(), coroutineRule.testDispatcherProvider
+                    mockDatabase,
+                    TestScope(),
+                    coroutineRule.testDispatcherProvider,
+                    isMainProcess = true,
                 )
             assertEquals(1, testee.exceptions.size)
             reset(mockTrackerAllowlistDao)
@@ -104,9 +114,11 @@ class RealTrackerAllowlistRepositoryTest {
                 rules =
                 listOf(
                     AllowlistRuleEntity(
-                        rule = "rule", domains = listOf("domain"), reason = "reason"
-                    )
-                )
+                        rule = "rule",
+                        domains = listOf("domain"),
+                        reason = "reason",
+                    ),
+                ),
             )
     }
 }

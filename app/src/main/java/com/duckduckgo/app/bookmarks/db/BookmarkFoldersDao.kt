@@ -22,7 +22,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.duckduckgo.app.bookmarks.model.BookmarkFolder
+import com.duckduckgo.savedsites.api.models.BookmarkFolder
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -37,7 +37,7 @@ interface BookmarkFoldersDao {
     @Query(
         "select *, (select count(*) from bookmarks where bookmarks.parentId = bookmark_folders.id) as numBookmarks, (select count(*) " +
             "from bookmark_folders as inner_bookmark_folders " +
-            "where inner_bookmark_folders.parentId = bookmark_folders.id) as numFolders from bookmark_folders"
+            "where inner_bookmark_folders.parentId = bookmark_folders.id) as numFolders from bookmark_folders",
     )
     fun getBookmarkFolders(): Flow<List<BookmarkFolder>>
 
@@ -48,7 +48,7 @@ interface BookmarkFoldersDao {
         "select *, (select count(*) from bookmarks where bookmarks.parentId = bookmark_folders.id) as numBookmarks, " +
             "(select count(*) from bookmark_folders as inner_bookmark_folders " +
             "where inner_bookmark_folders.parentId = bookmark_folders.id) as numFolders " +
-            "from bookmark_folders where bookmark_folders.parentId = :parentId"
+            "from bookmark_folders where bookmark_folders.parentId = :parentId",
     )
     fun getBookmarkFoldersByParentId(parentId: Long): Flow<List<BookmarkFolder>>
 
@@ -57,7 +57,7 @@ interface BookmarkFoldersDao {
             "where bookmarks.parentId = bookmark_folders.id) as numBookmarks, (select count(*) " +
             "from bookmark_folders as inner_bookmark_folders " +
             "where inner_bookmark_folders.parentId = bookmark_folders.id) as numFolders " +
-            "from bookmark_folders where bookmark_folders.parentId = :parentId"
+            "from bookmark_folders where bookmark_folders.parentId = :parentId",
     )
     fun getBookmarkFoldersByParentIdSync(parentId: Long): List<BookmarkFolder>
 
@@ -66,7 +66,7 @@ interface BookmarkFoldersDao {
             "where bookmarks.parentId = bookmark_folders.id) as numBookmarks, (select count(*) " +
             "from bookmark_folders as inner_bookmark_folders " +
             "where inner_bookmark_folders.parentId = bookmark_folders.id) as numFolders " +
-            "from bookmark_folders where bookmark_folders.id = :parentId"
+            "from bookmark_folders where bookmark_folders.id = :parentId",
     )
     fun getBookmarkFolderByParentId(parentId: Long): BookmarkFolder?
 

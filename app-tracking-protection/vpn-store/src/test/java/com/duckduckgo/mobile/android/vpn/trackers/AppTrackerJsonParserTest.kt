@@ -16,7 +16,7 @@
 
 package com.duckduckgo.mobile.android.vpn.trackers
 
-import com.duckduckgo.app.FileUtilities.loadText
+import com.duckduckgo.common.test.FileUtilities.loadText
 import com.squareup.moshi.Moshi
 import org.junit.Assert
 import org.junit.Test
@@ -31,8 +31,8 @@ class AppTrackerJsonParserTest {
         val blocklist = AppTrackerJsonParser.parseAppTrackerJson(moshi, json)
 
         Assert.assertEquals("1639624032609", blocklist.version)
-        Assert.assertEquals(255, blocklist.trackers.count())
-        Assert.assertEquals(376, blocklist.packages.count())
-        Assert.assertEquals(127, blocklist.entities.count())
+        Assert.assertEquals(260, blocklist.trackers.count())
+        Assert.assertEquals(433, blocklist.packages.count())
+        Assert.assertEquals(128, blocklist.entities.count())
     }
 }

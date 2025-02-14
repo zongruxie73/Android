@@ -16,76 +16,109 @@
 
 package com.duckduckgo.mobile.android.vpn.service
 
+import android.app.NotificationManager
 import android.content.Context
+import android.content.Context.NOTIFICATION_SERVICE
 import androidx.core.app.NotificationManagerCompat
-import com.duckduckgo.app.global.DispatcherProvider
-import com.duckduckgo.app.global.formatters.time.model.dateOfLastHour
-import com.duckduckgo.app.utils.ConflatedJob
+import com.duckduckgo.common.utils.ConflatedJob
+import com.duckduckgo.common.utils.DispatcherProvider
+import com.duckduckgo.common.utils.notification.checkPermissionAndNotify
+import com.duckduckgo.common.utils.plugins.PluginPoint
 import com.duckduckgo.di.scopes.VpnScope
-import com.duckduckgo.mobile.android.vpn.model.VpnTracker
+import com.duckduckgo.mobile.android.vpn.service.notification.VpnNotificationStore
 import com.duckduckgo.mobile.android.vpn.state.VpnStateMonitor.VpnStopReason
-import com.duckduckgo.mobile.android.vpn.stats.AppTrackerBlockingStatsRepository
-import com.duckduckgo.mobile.android.vpn.ui.notification.DeviceShieldEnabledNotificationBuilder
-import com.duckduckgo.mobile.android.vpn.ui.notification.DeviceShieldNotificationFactory
-import com.duckduckgo.mobile.android.vpn.ui.notification.OngoingNotificationPressedHandler
+import com.duckduckgo.mobile.android.vpn.ui.notification.VpnEnabledNotificationBuilder
 import com.squareup.anvil.annotations.ContributesMultibinding
 import dagger.SingleInstanceIn
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+import logcat.logcat
 
 @ContributesMultibinding(VpnScope::class)
 @SingleInstanceIn(VpnScope::class)
 class VpnTrackerNotificationUpdates @Inject constructor(
     private val context: Context,
     private val dispatcherProvider: DispatcherProvider,
-    private val repository: AppTrackerBlockingStatsRepository,
-    private val deviceShieldNotificationFactory: DeviceShieldNotificationFactory,
-    private val notificationManager: NotificationManagerCompat,
-    private val ongoingNotificationPressedHandler: OngoingNotificationPressedHandler
+    private val notificationManagerCompat: NotificationManagerCompat,
+    private val vpnEnabledNotificationContentPluginPoint: PluginPoint<VpnEnabledNotificationContentPlugin>,
+    private val vpnNotificationStore: VpnNotificationStore,
 ) : VpnServiceCallbacks {
 
-    private var notificationTickerChannel = MutableStateFlow(System.currentTimeMillis())
-    private val notificationTickerJob = ConflatedJob()
-    private val newTrackerObserverJob = ConflatedJob()
+    private val systemNotificationManager: NotificationManager? by lazy { context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager }
+    private val job = ConflatedJob()
+    private var hasUpdatedInitialState = false
+    private var currentPlugin: VpnEnabledNotificationContentPlugin? = null
 
     override fun onVpnStarted(coroutineScope: CoroutineScope) {
-        newTrackerObserverJob += coroutineScope.launch(dispatcherProvider.io()) {
-            repository.getVpnTrackers({ dateOfLastHour() })
-                .combine(notificationTickerChannel.asStateFlow()) { trackers, _ -> trackers }
-                .onStart { startNewTrackerNotificationRefreshTicker(this@launch) }
-                .collectLatest {
-                    updateNotificationForNewTrackerFound(it)
-                }
-        }
+        logcat { "VpnTrackerNotificationUpdates: onVpnStarted called" }
+        handleNotificationUpdates(coroutineScope)
+    }
+
+    override fun onVpnReconfigured(coroutineScope: CoroutineScope) {
+        logcat { "VpnTrackerNotificationUpdates: onVpnReconfigured called" }
+        handleNotificationUpdates(coroutineScope)
     }
 
     override fun onVpnStopped(
         coroutineScope: CoroutineScope,
-        vpnStopReason: VpnStopReason
+        vpnStopReason: VpnStopReason,
     ) {
-        notificationTickerJob.cancel()
-        newTrackerObserverJob.cancel()
+        logcat { "VpnTrackerNotificationUpdates: onVpnStopped called" }
+        job.cancel()
+        currentPlugin = null
+        hasUpdatedInitialState = false
+        vpnNotificationStore.persistentNotifDimissedTimestamp = 0L
     }
 
-    private fun updateNotificationForNewTrackerFound(trackersBlocked: List<VpnTracker>) {
-        if (trackersBlocked.isNotEmpty()) {
-            val deviceShieldNotification = deviceShieldNotificationFactory.createNotificationNewTrackerFound(trackersBlocked)
-            val notification = DeviceShieldEnabledNotificationBuilder
-                .buildTrackersBlockedNotification(context, deviceShieldNotification, ongoingNotificationPressedHandler)
-            notificationManager.notify(TrackerBlockingVpnService.VPN_FOREGROUND_SERVICE_ID, notification)
-        }
-    }
+    private fun handleNotificationUpdates(coroutineScope: CoroutineScope) {
+        job += coroutineScope.launch(dispatcherProvider.io()) {
+            val newPlugin = vpnEnabledNotificationContentPluginPoint.getHighestPriorityPlugin()
 
-    private fun startNewTrackerNotificationRefreshTicker(coroutineScope: CoroutineScope) {
-        // this ticker ensures the ongoing notification information is not stale if we haven't
-        // blocked trackers for a while
-        notificationTickerJob += coroutineScope.launch {
-            while (isActive) {
-                notificationTickerChannel.emit(System.currentTimeMillis())
-                delay(TimeUnit.HOURS.toMillis(1))
+            // If there is a change in plugin, we want to show the updated content
+            if (currentPlugin?.uuid != newPlugin?.uuid) {
+                currentPlugin = newPlugin
+                hasUpdatedInitialState = false
+                vpnNotificationStore.persistentNotifDimissedTimestamp = 0L
+            }
+
+            currentPlugin?.getUpdatedContent()?.let {
+                it.collectLatest { content ->
+                    val vpnNotification = content ?: VpnEnabledNotificationContentPlugin.VpnEnabledNotificationContent.EMPTY
+                    // We want to update the notification once every state change to be able to update the initial content. Else
+                    // we only update if the notification is still active / shown
+                    if (!hasUpdatedInitialState || shouldUpdateNotification()) {
+                        logcat { "VpnTrackerNotificationUpdates: updating notification" }
+                        hasUpdatedInitialState = true
+                        updateNotification(vpnNotification)
+                        vpnNotificationStore.persistentNotifDimissedTimestamp = 0L
+                    } else {
+                        logcat { "VpnTrackerNotificationUpdates: Ignoring notification update" }
+                    }
+                }
             }
         }
+    }
+
+    private fun updateNotification(
+        vpnNotification: VpnEnabledNotificationContentPlugin.VpnEnabledNotificationContent,
+    ) {
+        val notification = VpnEnabledNotificationBuilder.buildVpnEnabledUpdateNotification(context, vpnNotification)
+        notificationManagerCompat.checkPermissionAndNotify(context, TrackerBlockingVpnService.VPN_FOREGROUND_SERVICE_ID, notification)
+    }
+
+    private fun isNotificationVisible(): Boolean {
+        val notificationToUpdate =
+            systemNotificationManager?.activeNotifications?.filter { it.id == TrackerBlockingVpnService.VPN_FOREGROUND_SERVICE_ID }
+        return !notificationToUpdate.isNullOrEmpty()
+    }
+
+    private fun hasRequiredTimeElapsed(): Boolean =
+        vpnNotificationStore.persistentNotifDimissedTimestamp != 0L &&
+            System.currentTimeMillis() - vpnNotificationStore.persistentNotifDimissedTimestamp >= TimeUnit.DAYS.toMillis(1)
+
+    private fun shouldUpdateNotification(): Boolean {
+        return !hasUpdatedInitialState || isNotificationVisible() || hasRequiredTimeElapsed()
     }
 }

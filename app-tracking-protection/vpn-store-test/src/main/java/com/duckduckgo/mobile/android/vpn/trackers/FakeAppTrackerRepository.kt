@@ -21,19 +21,22 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 class FakeAppTrackerRepository : AppTrackerRepository {
     // list of app IDs
-    var appExclusionList: Set<String> = setOf()
+    var appExclusionList: MutableMap<String, String> = mutableMapOf()
         set(value) {
             field = value
             exclusionListFlow.value = getAppExclusionList()
         }
+
     // list of app IDs
     var systemAppOverrides: Set<String> = setOf()
+
     // appID -> isProtected
     var manualExclusionList: MutableMap<String, Boolean> = mutableMapOf()
         set(value) {
             field = value
             manualExclusionListFlow.value = getManualAppExclusionList()
         }
+
     // tracker -> app IDs
     var blocklist: MutableMap<String, Set<String>> = mutableMapOf()
     private val exclusionListFlow = MutableStateFlow(listOf<AppTrackerExcludedPackage>())
@@ -48,7 +51,7 @@ class FakeAppTrackerRepository : AppTrackerRepository {
     }
 
     override fun getAppExclusionList(): List<AppTrackerExcludedPackage> {
-        return appExclusionList.map { AppTrackerExcludedPackage(it) }
+        return appExclusionList.map { AppTrackerExcludedPackage(it.key, it.value) }
     }
 
     override fun getAppExclusionListFlow(): Flow<List<AppTrackerExcludedPackage>> {
@@ -71,6 +74,10 @@ class FakeAppTrackerRepository : AppTrackerRepository {
         manualExclusionList[packageName] = false
     }
 
+    override fun manuallyExcludedApps(packageNames: List<String>) {
+        packageNames.forEach { manualExclusionList[it] = false }
+    }
+
     override fun manuallyEnabledApp(packageName: String) {
         manualExclusionList[packageName] = true
     }
@@ -89,9 +96,8 @@ class FakeAppTrackerRepository : AppTrackerRepository {
                     name = this,
                     displayName = this,
                 ),
-                app = TrackerApp(1, 1.0)
-            )
+                app = TrackerApp(1, 1.0),
+            ),
         )
     }
-
 }

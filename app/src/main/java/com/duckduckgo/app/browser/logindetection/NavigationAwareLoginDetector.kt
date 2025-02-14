@@ -21,9 +21,13 @@ import androidx.core.net.toUri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.duckduckgo.app.browser.WebNavigationStateChange
-import com.duckduckgo.app.global.*
+import com.duckduckgo.app.fire.fireproofwebsite.ui.AutomaticFireproofSetting
 import com.duckduckgo.app.settings.db.SettingsDataStore
-import com.duckduckgo.app.settings.db.SettingsSharedPreferences.LoginDetectorPrefsMapper.AutomaticFireproofSetting
+import com.duckduckgo.common.utils.DefaultDispatcherProvider
+import com.duckduckgo.common.utils.DispatcherProvider
+import com.duckduckgo.common.utils.ValidUrl
+import com.duckduckgo.common.utils.baseHost
+import com.duckduckgo.common.utils.getValidUrl
 import kotlinx.coroutines.*
 import timber.log.Timber
 
@@ -34,7 +38,7 @@ interface NavigationAwareLoginDetector {
 
 data class LoginDetected(
     val authLoginDomain: String,
-    val forwardedToDomain: String
+    val forwardedToDomain: String,
 )
 
 sealed class NavigationEvent {
@@ -55,7 +59,7 @@ sealed class NavigationEvent {
 class NextPageLoginDetection constructor(
     private val settingsDataStore: SettingsDataStore,
     private val appCoroutineScope: CoroutineScope,
-    private val dispatcherProvider: DispatcherProvider = DefaultDispatcherProvider()
+    private val dispatcherProvider: DispatcherProvider = DefaultDispatcherProvider(),
 ) : NavigationAwareLoginDetector {
 
     override val loginEventLiveData = MutableLiveData<LoginDetected>()
@@ -211,7 +215,7 @@ class NextPageLoginDetection constructor(
         data class TwoFactorAuthFlow(val loginDomain: String) : LoginResult()
         data class LoginDetected(
             val authLoginDomain: String,
-            val forwardedToDomain: String
+            val forwardedToDomain: String,
         ) : LoginResult()
 
         object Unknown : LoginResult()

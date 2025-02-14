@@ -97,7 +97,8 @@
                     "reason": "site breakage"
                 }
             ],
-            "state": "enabled"
+            "state": "enabled",
+            "hash": "0"
         },
         "clickToPlay": {
             "exceptions": [],
@@ -293,7 +294,7 @@
                     "globalprivacycontrol.org",
                     "washingtonpost.com",
                     "nytimes.com",
-                    "privacy-test-pages.glitch.me"
+                    "privacy-test-pages.site"
                 ]
             }
         },

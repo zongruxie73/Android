@@ -17,29 +17,27 @@
 package com.duckduckgo.app.trackerdetection.api
 
 import com.duckduckgo.app.global.db.AppDatabase
-import com.duckduckgo.app.global.extensions.extractETag
-import com.duckduckgo.app.global.store.BinaryDataStore
 import com.duckduckgo.app.trackerdetection.Client.ClientName.*
 import com.duckduckgo.app.trackerdetection.TrackerDataLoader
 import com.duckduckgo.app.trackerdetection.db.TdsMetadataDao
+import com.duckduckgo.common.utils.extensions.extractETag
+import com.duckduckgo.common.utils.store.BinaryDataStore
 import io.reactivex.Completable
-import okhttp3.Headers
-import timber.log.Timber
 import java.io.IOException
 import javax.inject.Inject
+import okhttp3.Headers
+import timber.log.Timber
 
 class TrackerDataDownloader @Inject constructor(
     private val trackerListService: TrackerListService,
     private val binaryDataStore: BinaryDataStore,
     private val trackerDataLoader: TrackerDataLoader,
     private val appDatabase: AppDatabase,
-    private val metadataDao: TdsMetadataDao
+    private val metadataDao: TdsMetadataDao,
 ) {
 
     fun downloadTds(): Completable {
-
         return Completable.fromAction {
-
             Timber.d("Downloading tds.json")
 
             val call = trackerListService.tds()
@@ -64,7 +62,7 @@ class TrackerDataDownloader @Inject constructor(
 
     fun clearLegacyLists(): Completable {
         return Completable.fromAction {
-            listOf(EASYLIST, EASYPRIVACY, TRACKERSWHITELIST).forEach {
+            listOf(EASYLIST, EASYPRIVACY, TRACKERSALLOWLIST).forEach {
                 if (binaryDataStore.hasData(it.name)) {
                     binaryDataStore.clearData(it.name)
                 }

@@ -16,6 +16,7 @@
 
 package com.duckduckgo.lint.ui
 
+import com.android.SdkConstants.ATTR_STYLE
 import com.android.resources.ResourceFolderType
 import com.android.tools.lint.detector.api.Category.Companion.CUSTOM_LINT_CHECKS
 import com.android.tools.lint.detector.api.Implementation
@@ -30,7 +31,7 @@ import org.w3c.dom.Element
 @Suppress("UnstableApiUsage")
 class NoStyleAppliedToDesignSystemComponentDetector : LayoutDetector() {
 
-    override fun getApplicableElements() = DESIGN_COMPONENTS
+    override fun getApplicableElements() = DesignSystemLintExtensions.ANDROID_DESIGN_COMPONENTS
 
     override fun appliesTo(folderType: ResourceFolderType): Boolean {
         return folderType == ResourceFolderType.LAYOUT
@@ -40,7 +41,7 @@ class NoStyleAppliedToDesignSystemComponentDetector : LayoutDetector() {
         context: XmlContext,
         element: Element
     ) {
-        if (element.hasAttribute("style")) {
+        if (element.hasAttribute(ATTR_STYLE)) {
             reportIssue(context, element)
         }
     }
@@ -57,28 +58,6 @@ class NoStyleAppliedToDesignSystemComponentDetector : LayoutDetector() {
     }
 
     companion object {
-        private const val BUTTON_PRIMARY_LARGE = "com.duckduckgo.mobile.android.ui.view.button.ButtonPrimaryLarge"
-        private const val BUTTON_PRIMARY_SMALL = "com.duckduckgo.mobile.android.ui.view.button.ButtonPrimarySmall"
-        private const val BUTTON_SECONDARY_LARGE = "com.duckduckgo.mobile.android.ui.view.button.ButtonSecondaryLarge"
-        private const val BUTTON_SECONDARY_SMALL = "com.duckduckgo.mobile.android.ui.view.button.ButtonSecondarySmall"
-        private const val BUTTON_GHOST_LARGE = "com.duckduckgo.mobile.android.ui.view.button.ButtonGhostLarge"
-        private const val BUTTON_GHOST_SMALL = "com.duckduckgo.mobile.android.ui.view.button.ButtonGhostSmall"
-        private const val ONE_LINE_LIST_ITEM = "com.duckduckgo.mobile.android.ui.view.listitem.OneLineListItem"
-        private const val TWO_LINE_LIST_ITEM = "com.duckduckgo.mobile.android.ui.view.listitem.TwoLineListItem"
-        private const val SWITCH = "com.duckduckgo.mobile.android.ui.view.SwitchView"
-
-        val DESIGN_COMPONENTS =
-            listOf(
-                BUTTON_PRIMARY_LARGE,
-                BUTTON_PRIMARY_SMALL,
-                BUTTON_SECONDARY_LARGE,
-                BUTTON_SECONDARY_SMALL,
-                BUTTON_GHOST_LARGE,
-                BUTTON_GHOST_SMALL,
-                ONE_LINE_LIST_ITEM,
-                TWO_LINE_LIST_ITEM,
-                SWITCH
-            )
 
         val STYLE_IN_DESIGN_SYSTEM_COMPONENT = Issue
             .create(

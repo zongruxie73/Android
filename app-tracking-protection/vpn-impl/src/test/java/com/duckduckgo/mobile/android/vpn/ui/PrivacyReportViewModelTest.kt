@@ -16,31 +16,25 @@
 
 package com.duckduckgo.mobile.android.vpn.ui
 
-import android.content.Context
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import androidx.core.content.edit
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import app.cash.turbine.test
-import com.duckduckgo.app.CoroutineTestRule
-import com.duckduckgo.mobile.android.vpn.dao.VpnTrackerDao
+import com.duckduckgo.common.test.CoroutineTestRule
+import com.duckduckgo.common.utils.formatters.time.DatabaseDateFormatter
+import com.duckduckgo.mobile.android.vpn.feature.removal.VpnFeatureRemover
 import com.duckduckgo.mobile.android.vpn.model.TrackingApp
 import com.duckduckgo.mobile.android.vpn.model.VpnTracker
-import com.duckduckgo.mobile.android.vpn.stats.AppTrackerBlockingStatsRepository
-import com.duckduckgo.app.global.formatters.time.DatabaseDateFormatter
-import com.duckduckgo.mobile.android.vpn.feature.removal.VpnFeatureRemover
-import com.duckduckgo.mobile.android.vpn.prefs.PREFS_FILENAME
-import com.duckduckgo.mobile.android.vpn.prefs.RealVpnPreferences
 import com.duckduckgo.mobile.android.vpn.state.VpnStateMonitor
+import com.duckduckgo.mobile.android.vpn.stats.AppTrackerBlockingStatsRepository
 import com.duckduckgo.mobile.android.vpn.stats.RealAppTrackerBlockingStatsRepository
 import com.duckduckgo.mobile.android.vpn.store.VpnDatabase
-import com.jakewharton.threetenabp.AndroidThreeTen
-import org.mockito.kotlin.mock
-import com.duckduckgo.mobile.android.vpn.prefs.VpnPreferences
+import com.duckduckgo.mobile.android.vpn.trackers.AppTrackerEntity
 import com.duckduckgo.mobile.android.vpn.ui.onboarding.VpnStore
 import com.duckduckgo.mobile.android.vpn.ui.report.PrivacyReportViewModel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import java.time.LocalDateTime
+import kotlin.time.ExperimentalTime
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -48,10 +42,8 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.threeten.bp.LocalDateTime
-import kotlin.time.ExperimentalTime
+import org.mockito.kotlin.mock
 
-@ExperimentalCoroutinesApi
 @ExperimentalTime
 @RunWith(AndroidJUnit4::class)
 class PrivacyReportViewModelTest {
@@ -65,36 +57,26 @@ class PrivacyReportViewModelTest {
     val coroutineRule = CoroutineTestRule()
 
     private lateinit var repository: AppTrackerBlockingStatsRepository
-    private lateinit var vpnPreferences: VpnPreferences
     private lateinit var db: VpnDatabase
-    private lateinit var vpnTrackerDao: VpnTrackerDao
     private val vpnStore = mock<VpnStore>()
     private val vpnStateMonitor = mock<VpnStateMonitor>()
     private val vpnFeatureRemover = mock<VpnFeatureRemover>()
 
-    private val context = InstrumentationRegistry.getInstrumentation().targetContext
-
     private lateinit var testee: PrivacyReportViewModel
 
-    @ExperimentalCoroutinesApi
     @Before
     fun before() {
         prepareDb()
 
-        repository = RealAppTrackerBlockingStatsRepository(db)
-
-        context.getSharedPreferences(PREFS_FILENAME, Context.MODE_PRIVATE).edit { clear() }
-        vpnPreferences = RealVpnPreferences(context)
+        repository = RealAppTrackerBlockingStatsRepository(db, coroutineRule.testDispatcherProvider)
 
         testee = PrivacyReportViewModel(repository, vpnStore, vpnFeatureRemover, vpnStateMonitor, coroutineRule.testDispatcherProvider)
     }
 
     private fun prepareDb() {
-        AndroidThreeTen.init(InstrumentationRegistry.getInstrumentation().targetContext)
         db = Room.inMemoryDatabaseBuilder(InstrumentationRegistry.getInstrumentation().targetContext, VpnDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        vpnTrackerDao = db.vpnTrackerDao()
     }
 
     @After
@@ -104,7 +86,6 @@ class PrivacyReportViewModelTest {
 
     @Test
     fun whenTrackersBlockedThenReportHasTrackers() = runBlocking {
-
         trackerFound("dax.com")
         trackerFound("dax.com")
         trackerFound("dax.com")
@@ -118,7 +99,6 @@ class PrivacyReportViewModelTest {
 
     @Test
     fun whenTrackersBlockedOutsideTimeWindowThenReturnEmpty() = runBlocking {
-
         trackerFoundYesterday("dax.com")
         trackerFoundYesterday("dax.com")
         trackerFoundYesterday("dax.com")
@@ -146,7 +126,7 @@ class PrivacyReportViewModelTest {
     private fun trackerFound(
         domain: String = "example.com",
         trackerCompanyId: Int = -1,
-        timestamp: String = DatabaseDateFormatter.bucketByHour()
+        timestamp: String = DatabaseDateFormatter.bucketByHour(),
     ) {
         val defaultTrackingApp = TrackingApp("app.foo.com", "Foo App")
         val tracker = VpnTracker(
@@ -155,14 +135,25 @@ class PrivacyReportViewModelTest {
             timestamp = timestamp,
             company = "",
             companyDisplayName = "",
-            trackingApp = defaultTrackingApp
+            trackingApp = defaultTrackingApp,
         )
-        vpnTrackerDao.insert(tracker)
+        val trackers = listOf(tracker)
+        repository.insert(trackers)
+        db.vpnAppTrackerBlockingDao().insertTrackerEntities(trackers.map { it.asEntity() })
     }
 
     private fun yesterday(): String {
         val now = LocalDateTime.now()
         val yesterday = now.minusDays(1)
         return DatabaseDateFormatter.bucketByHour(yesterday)
+    }
+
+    private fun VpnTracker.asEntity(): AppTrackerEntity {
+        return AppTrackerEntity(
+            trackerCompanyId = this.trackerCompanyId,
+            entityName = "name",
+            score = 0,
+            signals = emptyList(),
+        )
     }
 }

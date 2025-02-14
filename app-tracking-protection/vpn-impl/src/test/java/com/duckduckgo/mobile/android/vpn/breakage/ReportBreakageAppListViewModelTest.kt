@@ -17,25 +17,23 @@
 package com.duckduckgo.mobile.android.vpn.breakage
 
 import app.cash.turbine.test
-import com.duckduckgo.app.CoroutineTestRule
-import kotlinx.coroutines.test.runTest
-import com.duckduckgo.mobile.android.vpn.apps.AppCategory
+import com.duckduckgo.common.test.CoroutineTestRule
 import com.duckduckgo.mobile.android.vpn.apps.TrackingProtectionAppInfo
 import com.duckduckgo.mobile.android.vpn.apps.TrackingProtectionAppsRepository
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.duckduckgo.mobile.android.vpn.exclusion.AppCategory
+import kotlin.time.ExperimentalTime
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import kotlin.time.ExperimentalTime
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
 @ExperimentalTime
-@ExperimentalCoroutinesApi
 class ReportBreakageAppListViewModelTest {
 
     private val trackingProtectionAppsRepository = mock<TrackingProtectionAppsRepository>()
@@ -48,7 +46,6 @@ class ReportBreakageAppListViewModelTest {
 
     @Before
     fun setup() {
-
         viewModel = ReportBreakageAppListViewModel(trackingProtectionAppsRepository)
     }
 
@@ -90,9 +87,9 @@ class ReportBreakageAppListViewModelTest {
             assertEquals(
                 ReportBreakageAppListView.State(
                     listOf(InstalledApp(packageName = appWithoutIssues.packageName, name = appWithoutIssues.name)),
-                    false
+                    false,
                 ),
-                awaitItem()
+                awaitItem(),
             )
         }
     }
@@ -109,7 +106,7 @@ class ReportBreakageAppListViewModelTest {
             )
             assertEquals(
                 ReportBreakageAppListView.State(expected, true),
-                awaitItem()
+                awaitItem(),
             )
         }
     }
@@ -126,7 +123,7 @@ class ReportBreakageAppListViewModelTest {
             )
             assertEquals(
                 ReportBreakageAppListView.State(expected, false),
-                awaitItem()
+                awaitItem(),
             )
         }
     }
@@ -139,7 +136,7 @@ class ReportBreakageAppListViewModelTest {
             viewModel.onBreakageSubmitted(IssueReport())
 
             val expectedCommand = ReportBreakageAppListView.Command.SendBreakageInfo(
-                IssueReport(appPackageId = selectedApp.packageName)
+                IssueReport(appPackageId = selectedApp.packageName),
             )
 
             assertEquals(expectedCommand, awaitItem())
@@ -155,7 +152,7 @@ class ReportBreakageAppListViewModelTest {
             viewModel.onBreakageSubmitted(IssueReport(description = "description"))
 
             val expectedCommand = ReportBreakageAppListView.Command.SendBreakageInfo(
-                IssueReport(description = "description", appPackageId = selectedApp.packageName)
+                IssueReport(description = "description", appPackageId = selectedApp.packageName),
             )
 
             assertEquals(expectedCommand, awaitItem())
@@ -166,20 +163,18 @@ class ReportBreakageAppListViewModelTest {
     private val appWithoutIssues = TrackingProtectionAppInfo(
         packageName = "com.package.name",
         name = "App",
-        type = "None",
         category = AppCategory.Undefined,
         isExcluded = false,
         knownProblem = TrackingProtectionAppInfo.NO_ISSUES,
-        userModified = false
+        userModified = false,
     )
 
     private val appWithIssues = TrackingProtectionAppInfo(
         packageName = "com.issues.package.name",
         name = "App",
-        type = "None",
         category = AppCategory.Undefined,
         isExcluded = false,
         knownProblem = TrackingProtectionAppInfo.KNOWN_ISSUES_EXCLUSION_REASON,
-        userModified = false
+        userModified = false,
     )
 }

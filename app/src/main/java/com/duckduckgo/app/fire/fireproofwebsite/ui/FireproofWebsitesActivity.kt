@@ -16,12 +16,12 @@
 
 package com.duckduckgo.app.fire.fireproofwebsite.ui
 
-import androidx.appcompat.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import androidx.appcompat.app.AlertDialog
 import androidx.core.text.HtmlCompat
 import com.duckduckgo.anvil.annotations.InjectWith
 import com.duckduckgo.app.browser.R
@@ -29,15 +29,16 @@ import com.duckduckgo.app.browser.databinding.ActivityFireproofWebsitesBinding
 import com.duckduckgo.app.browser.favicon.FaviconManager
 import com.duckduckgo.app.fire.fireproofwebsite.data.FireproofWebsiteEntity
 import com.duckduckgo.app.fire.fireproofwebsite.data.website
-import com.duckduckgo.app.global.DuckDuckGoActivity
-import com.duckduckgo.app.settings.db.SettingsSharedPreferences.LoginDetectorPrefsMapper.AutomaticFireproofSetting
+import com.duckduckgo.app.fire.fireproofwebsite.ui.AutomaticFireproofSetting.Companion.getFireproofSettingOptionForIndex
+import com.duckduckgo.common.ui.DuckDuckGoActivity
+import com.duckduckgo.common.ui.view.dialog.RadioListAlertDialogBuilder
+import com.duckduckgo.common.ui.viewbinding.viewBinding
 import com.duckduckgo.di.scopes.ActivityScope
-import com.duckduckgo.mobile.android.ui.viewbinding.viewBinding
 import com.google.android.material.snackbar.Snackbar
 import javax.inject.Inject
 
 @InjectWith(ActivityScope::class)
-class FireproofWebsitesActivity : DuckDuckGoActivity(), FireproofSettingsSelectorFragment.Listener {
+class FireproofWebsitesActivity : DuckDuckGoActivity() {
 
     @Inject
     lateinit var faviconManager: FaviconManager
@@ -100,8 +101,28 @@ class FireproofWebsitesActivity : DuckDuckGoActivity(), FireproofSettingsSelecto
     }
 
     private fun showAutomaticFireproofSettingSelectionDialog(automaticFireproofSetting: AutomaticFireproofSetting) {
-        val dialog = FireproofSettingsSelectorFragment.create(automaticFireproofSetting)
-        dialog.show(supportFragmentManager, FIREPROOF_SETTING_SELECTOR_DIALOG_TAG)
+        val currentFireproofSetting = automaticFireproofSetting.getOptionIndex()
+        RadioListAlertDialogBuilder(this)
+            .setTitle(R.string.fireproofWebsiteSettingSelectionTitle)
+            .setOptions(
+                listOf(
+                    R.string.settingsAppLinksAskEveryTime,
+                    R.string.settingsAppLinksAlways,
+                    R.string.settingsAppLinksNever,
+                ),
+                currentFireproofSetting,
+            )
+            .setPositiveButton(com.duckduckgo.mobile.android.R.string.dialogSave)
+            .setNegativeButton(R.string.cancel)
+            .addEventListener(
+                object : RadioListAlertDialogBuilder.EventListener() {
+                    override fun onPositiveButtonClicked(selectedItem: Int) {
+                        val fireproofSettingSelected = selectedItem.getFireproofSettingOptionForIndex()
+                        viewModel.onAutomaticFireproofSettingChanged(fireproofSettingSelected)
+                    }
+                },
+            )
+            .show()
     }
 
     @Suppress("deprecation")
@@ -111,7 +132,7 @@ class FireproofWebsitesActivity : DuckDuckGoActivity(), FireproofSettingsSelecto
         Snackbar.make(
             binding.root,
             message,
-            Snackbar.LENGTH_LONG
+            Snackbar.LENGTH_LONG,
         ).setAction(R.string.fireproofWebsiteSnackbarAction) {
             viewModel.onSnackBarUndoFireproof(entity)
         }.show()
@@ -123,7 +144,7 @@ class FireproofWebsitesActivity : DuckDuckGoActivity(), FireproofSettingsSelecto
         Snackbar.make(
             binding.root,
             message,
-            Snackbar.LENGTH_LONG
+            Snackbar.LENGTH_LONG,
         ).setAction(R.string.fireproofWebsiteSnackbarAction) {
             viewModel.onSnackBarUndoRemoveAllWebsites(removedWebsitesEntities)
         }.show()
@@ -135,14 +156,8 @@ class FireproofWebsitesActivity : DuckDuckGoActivity(), FireproofSettingsSelecto
     }
 
     companion object {
-        private const val FIREPROOF_SETTING_SELECTOR_DIALOG_TAG = "FIREPROOF_SETTING_SELECTOR_DIALOG_TAG"
-
         fun intent(context: Context): Intent {
             return Intent(context, FireproofWebsitesActivity::class.java)
         }
-    }
-
-    override fun onAutomaticFireproofSettingSelected(selectedSetting: AutomaticFireproofSetting) {
-        viewModel.onAutomaticFireproofSettingChanged(selectedSetting)
     }
 }

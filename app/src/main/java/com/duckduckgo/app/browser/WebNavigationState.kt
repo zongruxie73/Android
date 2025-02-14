@@ -18,9 +18,8 @@ package com.duckduckgo.app.browser
 
 import android.webkit.WebBackForwardList
 import androidx.core.net.toUri
-import com.duckduckgo.app.browser.WebNavigationStateChange.Unchanged
 import com.duckduckgo.app.browser.history.NavigationHistoryEntry
-import com.duckduckgo.app.global.isHttpsVersionOfUri
+import com.duckduckgo.common.utils.isHttpsVersionOfUri
 
 interface WebNavigationState {
     val originalUrl: String?
@@ -37,7 +36,7 @@ interface WebNavigationState {
 sealed class WebNavigationStateChange {
     data class NewPage(
         val url: String,
-        val title: String?
+        val title: String?,
     ) : WebNavigationStateChange()
 
     data class UrlUpdated(val url: String) : WebNavigationStateChange()
@@ -52,8 +51,9 @@ fun WebNavigationState.compare(previous: WebNavigationState?): WebNavigationStat
         return WebNavigationStateChange.Unchanged
     }
 
-    if (this is EmptyNavigationState)
+    if (this is EmptyNavigationState) {
         return WebNavigationStateChange.PageNavigationCleared
+    }
 
     if (originalUrl == null && previous?.originalUrl != null) {
         return WebNavigationStateChange.PageCleared
@@ -69,7 +69,6 @@ fun WebNavigationState.compare(previous: WebNavigationState?): WebNavigationStat
     // The most up-to-date record of the url is the current one, this may change many times during a page load
     // If the host changes too, we class it as a new page load
     if (currentUrl != previous?.currentUrl) {
-
         if (currentUrl?.toUri()?.host != previous?.currentUrl?.toUri()?.host) {
             return WebNavigationStateChange.NewPage(latestUrl, title)
         }
@@ -82,7 +81,7 @@ fun WebNavigationState.compare(previous: WebNavigationState?): WebNavigationStat
 
 data class WebViewNavigationState(
     val stack: WebBackForwardList,
-    override val progress: Int? = null
+    override val progress: Int? = null,
 ) : WebNavigationState {
 
     override val originalUrl: String? = stack.originalUrl
@@ -145,7 +144,6 @@ data class WebViewNavigationState(
         }
         return entryList
     }
-
 }
 
 @Suppress("DataClassPrivateConstructor")
@@ -153,14 +151,14 @@ data class EmptyNavigationState private constructor(
     override val originalUrl: String?,
     override val currentUrl: String?,
     override val title: String?,
-    override val navigationHistory: List<NavigationHistoryEntry> = emptyList()
+    override val navigationHistory: List<NavigationHistoryEntry> = emptyList(),
 ) : WebNavigationState {
     companion object {
         operator fun invoke(webNavigationState: WebNavigationState): EmptyNavigationState {
             return EmptyNavigationState(
                 webNavigationState.originalUrl,
                 webNavigationState.currentUrl,
-                webNavigationState.title
+                webNavigationState.title,
             )
         }
     }

@@ -21,22 +21,23 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import com.duckduckgo.appbuildconfig.api.AppBuildConfig
+import com.duckduckgo.common.utils.DispatcherProvider
+import com.duckduckgo.common.utils.extensions.registerNotExportedReceiver
+import com.duckduckgo.common.utils.formatters.time.DatabaseDateFormatter
 import com.duckduckgo.di.scopes.VpnScope
 import com.duckduckgo.mobile.android.vpn.model.TrackingApp
 import com.duckduckgo.mobile.android.vpn.model.VpnTracker
 import com.duckduckgo.mobile.android.vpn.service.VpnServiceCallbacks
-import com.duckduckgo.app.global.formatters.time.DatabaseDateFormatter
 import com.duckduckgo.mobile.android.vpn.state.VpnStateMonitor.VpnStopReason
-import com.duckduckgo.mobile.android.vpn.store.VpnDatabase
+import com.duckduckgo.mobile.android.vpn.stats.AppTrackerBlockingStatsRepository
 import com.squareup.anvil.annotations.ContributesMultibinding
 import dagger.SingleInstanceIn
+import java.time.LocalDateTime
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import org.threeten.bp.LocalDateTime
-import timber.log.Timber
-import javax.inject.Inject
+import logcat.logcat
 
 /**
  * This receiver allows sending fake trackers, to do so, in the command line:
@@ -48,24 +49,25 @@ import javax.inject.Inject
  */
 @ContributesMultibinding(
     scope = VpnScope::class,
-    boundType = VpnServiceCallbacks::class
+    boundType = VpnServiceCallbacks::class,
 )
 @SingleInstanceIn(VpnScope::class)
 class SendTrackerDebugReceiver @Inject constructor(
     private val context: Context,
     private val appBuildConfig: AppBuildConfig,
-    private val vpnDatabase: VpnDatabase,
+    private val appTrackerBlockingRepository: AppTrackerBlockingStatsRepository,
+    private val dispatchers: DispatcherProvider,
 ) : BroadcastReceiver(), VpnServiceCallbacks {
 
     private fun register() {
         unregister()
         if (!appBuildConfig.isDebug) {
-            Timber.i("Will not register SendTrackerDebugReceiver, not in DEBUG mode")
+            logcat { "Will not register SendTrackerDebugReceiver, not in DEBUG mode" }
             return
         }
 
-        Timber.i("Debug receiver SendTrackerDebugReceiver registered")
-        context.registerReceiver(this, IntentFilter(INTENT_ACTION))
+        logcat { "Debug receiver SendTrackerDebugReceiver registered" }
+        context.registerNotExportedReceiver(this, IntentFilter(INTENT_ACTION))
     }
 
     private fun unregister() {
@@ -73,42 +75,42 @@ class SendTrackerDebugReceiver @Inject constructor(
     }
 
     fun handleIntent(intent: Intent) {
-        GlobalScope.launch(Dispatchers.IO) {
+        GlobalScope.launch(dispatchers.io()) {
             val times = intent.getStringExtra("times")?.toInt() ?: 1
             val hoursAgo = intent.getStringExtra("hago")?.toLong() ?: 0L
-            Timber.i("Inserting %d trackers into the DB", times)
+            logcat { "Inserting $times trackers into the DB" }
 
             val insertionList = mutableListOf<VpnTracker>()
             for (i in 0 until times) {
                 insertionList.add(
                     dummyTrackers[(dummyTrackers.indices).shuffled().first()].copy(
                         timestamp = DatabaseDateFormatter.timestamp(
-                            LocalDateTime.now().minusHours(hoursAgo)
-                        )
-                    )
+                            LocalDateTime.now().minusHours(hoursAgo),
+                        ),
+                    ),
                 )
             }
-            vpnDatabase.vpnTrackerDao().insert(insertionList)
+            appTrackerBlockingRepository.insert(insertionList)
         }
     }
 
     override fun onReceive(
         context: Context,
-        intent: Intent
+        intent: Intent,
     ) {
         handleIntent(intent)
     }
 
     override fun onVpnStarted(coroutineScope: CoroutineScope) {
-        Timber.v("Send tracker receiver started")
+        logcat { "Send tracker receiver started" }
         register()
     }
 
     override fun onVpnStopped(
         coroutineScope: CoroutineScope,
-        vpnStopReason: VpnStopReason
+        vpnStopReason: VpnStopReason,
     ) {
-        Timber.v("Send tracker receiver stopped")
+        logcat { "Send tracker receiver stopped" }
         unregister()
     }
 
@@ -125,8 +127,8 @@ private val dummyTrackers = listOf(
         companyDisplayName = "Facebook",
         trackingApp = TrackingApp(
             packageId = "foo.package.id",
-            appDisplayName = "Foo"
-        )
+            appDisplayName = "Foo",
+        ),
     ),
     VpnTracker(
         trackerCompanyId = 0,
@@ -135,8 +137,8 @@ private val dummyTrackers = listOf(
         companyDisplayName = "Segment",
         trackingApp = TrackingApp(
             packageId = "foo.package.id",
-            appDisplayName = "Foo"
-        )
+            appDisplayName = "Foo",
+        ),
     ),
     VpnTracker(
         trackerCompanyId = 0,
@@ -145,8 +147,8 @@ private val dummyTrackers = listOf(
         companyDisplayName = "Google",
         trackingApp = TrackingApp(
             packageId = "foo.package.id",
-            appDisplayName = "Foo"
-        )
+            appDisplayName = "Foo",
+        ),
     ),
     VpnTracker(
         trackerCompanyId = 0,
@@ -155,8 +157,8 @@ private val dummyTrackers = listOf(
         companyDisplayName = "Google",
         trackingApp = TrackingApp(
             packageId = "lion.package.id",
-            appDisplayName = "LION"
-        )
+            appDisplayName = "LION",
+        ),
     ),
     VpnTracker(
         trackerCompanyId = 0,
@@ -165,8 +167,8 @@ private val dummyTrackers = listOf(
         companyDisplayName = "Segment",
         trackingApp = TrackingApp(
             packageId = "lion.package.id",
-            appDisplayName = "LION"
-        )
+            appDisplayName = "LION",
+        ),
     ),
     VpnTracker(
         trackerCompanyId = 0,
@@ -175,8 +177,8 @@ private val dummyTrackers = listOf(
         companyDisplayName = "Google",
         trackingApp = TrackingApp(
             packageId = "puppy.package.id",
-            appDisplayName = "PUPPY"
-        )
+            appDisplayName = "PUPPY",
+        ),
     ),
     VpnTracker(
         trackerCompanyId = 0,
@@ -185,7 +187,7 @@ private val dummyTrackers = listOf(
         companyDisplayName = "Segment",
         trackingApp = TrackingApp(
             packageId = "puppy.package.id",
-            appDisplayName = "PUPPY"
-        )
+            appDisplayName = "PUPPY",
+        ),
     ),
 )

@@ -16,23 +16,23 @@
 
 package com.duckduckgo.mobile.android.vpn.bugreport
 
-import com.duckduckgo.app.global.DispatcherProvider
-import com.duckduckgo.app.global.formatters.time.model.dateOfLastDay
-import com.duckduckgo.di.scopes.VpnScope
+import com.duckduckgo.common.utils.DispatcherProvider
+import com.duckduckgo.common.utils.formatters.time.DatabaseDateFormatter
+import com.duckduckgo.common.utils.formatters.time.model.dateOfLastDay
+import com.duckduckgo.di.scopes.ActivityScope
 import com.duckduckgo.mobile.android.vpn.state.VpnStateCollectorPlugin
-import com.duckduckgo.app.global.formatters.time.DatabaseDateFormatter
-import com.duckduckgo.mobile.android.vpn.store.VpnDatabase
+import com.duckduckgo.mobile.android.vpn.stats.AppTrackerBlockingStatsRepository
 import com.squareup.anvil.annotations.ContributesMultibinding
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
+import java.time.LocalDateTime
+import javax.inject.Inject
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import org.threeten.bp.LocalDateTime
-import javax.inject.Inject
 
-@ContributesMultibinding(VpnScope::class)
+@ContributesMultibinding(ActivityScope::class)
 class VpnLastTrackersBlockedCollector @Inject constructor(
-    private val vpnDatabase: VpnDatabase,
+    private val appTrackerBlockingRepository: AppTrackerBlockingStatsRepository,
     private val dispatcherProvider: DispatcherProvider,
     private val moshi: Moshi,
 ) : VpnStateCollectorPlugin {
@@ -43,7 +43,7 @@ class VpnLastTrackersBlockedCollector @Inject constructor(
     override suspend fun collectVpnRelatedState(appPackageId: String?): JSONObject {
         return withContext(dispatcherProvider.io()) {
             val result = mutableMapOf<String, List<String>>()
-            vpnDatabase.vpnTrackerDao().getTrackersBetweenSync(dateOfLastDay(), noEndDate())
+            appTrackerBlockingRepository.getVpnTrackersSync({ dateOfLastDay() }, noEndDate())
                 .filter { tracker -> appPackageId?.let { tracker.trackingApp.packageId == it } ?: true }
                 .groupBy { it.trackingApp.packageId }
                 .mapValues { entry -> entry.value.map { it.domain } }
@@ -56,8 +56,8 @@ class VpnLastTrackersBlockedCollector @Inject constructor(
                     Map::class.java,
                     String::class.java,
                     List::class.java,
-                    String::class.java
-                )
+                    String::class.java,
+                ),
             )
             return@withContext JSONObject(adapter.toJson(result))
         }

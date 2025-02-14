@@ -17,37 +17,33 @@
 package com.duckduckgo.app.di
 
 import android.content.Context
-import com.duckduckgo.app.autocomplete.api.AutoCompleteService
-import com.duckduckgo.app.brokensite.api.BrokenSiteSender
-import com.duckduckgo.app.brokensite.api.BrokenSiteSubmitter
-import com.duckduckgo.app.browser.useragent.UserAgentProvider
-import com.duckduckgo.app.email.api.EmailService
 import com.duckduckgo.app.feedback.api.FeedbackService
 import com.duckduckgo.app.feedback.api.FeedbackSubmitter
 import com.duckduckgo.app.feedback.api.FireAndForgetFeedbackSubmitter
 import com.duckduckgo.app.feedback.api.SubReasonApiMapper
-import com.duckduckgo.app.global.AppUrl.Url
-import com.duckduckgo.app.global.DispatcherProvider
 import com.duckduckgo.app.global.api.*
-import com.duckduckgo.app.global.plugins.PluginPoint
-import com.duckduckgo.app.global.plugins.pixel.PixelInterceptorPlugin
-import com.duckduckgo.app.httpsupgrade.api.HttpsUpgradeService
-import com.duckduckgo.app.statistics.VariantManager
 import com.duckduckgo.app.statistics.pixels.Pixel
 import com.duckduckgo.app.statistics.store.StatisticsDataStore
-import com.duckduckgo.app.surrogates.api.ResourceSurrogateListService
-import com.duckduckgo.app.survey.api.SurveyService
-import com.duckduckgo.app.trackerdetection.api.TrackerListService
-import com.duckduckgo.app.trackerdetection.db.TdsMetadataDao
 import com.duckduckgo.appbuildconfig.api.AppBuildConfig
+import com.duckduckgo.common.utils.AppUrl.Url
+import com.duckduckgo.common.utils.DispatcherProvider
+import com.duckduckgo.common.utils.plugins.PluginPoint
+import com.duckduckgo.common.utils.plugins.pixel.PixelInterceptorPlugin
 import com.duckduckgo.di.scopes.AppScope
-import com.duckduckgo.feature.toggles.api.FeatureToggle
-import com.duckduckgo.mobile.android.vpn.waitlist.api.AppTrackingProtectionWaitlistService
-import com.duckduckgo.privacy.config.api.Gpc
+import com.duckduckgo.experiments.api.VariantManager
+import com.duckduckgo.user.agent.api.UserAgentProvider
 import com.squareup.moshi.Moshi
+import dagger.Lazy
 import dagger.Module
 import dagger.Provides
 import dagger.SingleInstanceIn
+import java.io.File
+import java.io.IOException
+import java.net.Proxy
+import java.net.ProxySelector
+import java.net.SocketAddress
+import java.net.URI
+import javax.inject.Named
 import kotlinx.coroutines.CoroutineScope
 import okhttp3.Cache
 import okhttp3.Interceptor
@@ -57,8 +53,6 @@ import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
 import timber.log.Timber
-import java.io.File
-import javax.inject.Named
 
 @Module
 class NetworkModule {
@@ -69,7 +63,7 @@ class NetworkModule {
     fun apiOkHttpClient(
         context: Context,
         apiRequestInterceptor: ApiRequestInterceptor,
-        apiInterceptorPlugins: PluginPoint<ApiInterceptorPlugin>
+        apiInterceptorPlugins: PluginPoint<ApiInterceptorPlugin>,
     ): OkHttpClient {
         val cacheLocation = File(context.cacheDir, NetworkApiCache.FILE_NAME)
         val cache = Cache(cacheLocation, CACHE_SIZE)
@@ -80,6 +74,23 @@ class NetworkModule {
                     addInterceptor(it.getInterceptor())
                 }
             }
+            // See https://app.asana.com/0/1202552961248957/1204588257103865/f and
+            // https://github.com/square/okhttp/issues/6877#issuecomment-1438554879
+            .proxySelector(
+                object : ProxySelector() {
+                    override fun select(uri: URI?): List<Proxy> {
+                        return try {
+                            getDefault().select(uri)
+                        } catch (t: Throwable) {
+                            listOf(Proxy.NO_PROXY)
+                        }
+                    }
+
+                    override fun connectFailed(uri: URI?, sa: SocketAddress?, ioe: IOException?) {
+                        getDefault().connectFailed(uri, sa, ioe)
+                    }
+                },
+            )
             .build()
     }
 
@@ -109,12 +120,12 @@ class NetworkModule {
     @SingleInstanceIn(AppScope::class)
     @Named("api")
     fun apiRetrofit(
-        @Named("api") okHttpClient: OkHttpClient,
-        moshi: Moshi
+        @Named("api") okHttpClient: Lazy<OkHttpClient>,
+        moshi: Moshi,
     ): Retrofit {
         return Retrofit.Builder()
             .baseUrl(Url.API)
-            .client(okHttpClient)
+            .callFactory { okHttpClient.get().newCall(it) }
             .addConverterFactory(ScalarsConverterFactory.create())
             .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
             .addConverterFactory(MoshiConverterFactory.create(moshi))
@@ -125,12 +136,12 @@ class NetworkModule {
     @SingleInstanceIn(AppScope::class)
     @Named("nonCaching")
     fun nonCachingRetrofit(
-        @Named("nonCaching") okHttpClient: OkHttpClient,
-        moshi: Moshi
+        @Named("nonCaching") okHttpClient: Lazy<OkHttpClient>,
+        moshi: Moshi,
     ): Retrofit {
         return Retrofit.Builder()
             .baseUrl(Url.API)
-            .client(okHttpClient)
+            .callFactory { okHttpClient.get().newCall(it) }
             .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
@@ -140,7 +151,7 @@ class NetworkModule {
     fun apiRequestInterceptor(
         context: Context,
         userAgentProvider: UserAgentProvider,
-        appBuildConfig: AppBuildConfig
+        appBuildConfig: AppBuildConfig,
     ): ApiRequestInterceptor {
         return ApiRequestInterceptor(context, userAgentProvider, appBuildConfig)
     }
@@ -151,51 +162,6 @@ class NetworkModule {
     }
 
     @Provides
-    fun trackerListService(@Named("api") retrofit: Retrofit): TrackerListService =
-        retrofit.create(TrackerListService::class.java)
-
-    @Provides
-    fun httpsUpgradeService(@Named("api") retrofit: Retrofit): HttpsUpgradeService =
-        retrofit.create(HttpsUpgradeService::class.java)
-
-    @Provides
-    fun autoCompleteService(@Named("nonCaching") retrofit: Retrofit): AutoCompleteService =
-        retrofit.create(AutoCompleteService::class.java)
-
-    @Provides
-    fun emailService(@Named("nonCaching") retrofit: Retrofit): EmailService =
-        retrofit.create(EmailService::class.java)
-
-    @Provides
-    fun surrogatesService(@Named("api") retrofit: Retrofit): ResourceSurrogateListService =
-        retrofit.create(ResourceSurrogateListService::class.java)
-
-    @Provides
-    fun appTrackingProtectionWaitlistService(@Named("api") retrofit: Retrofit): AppTrackingProtectionWaitlistService =
-        retrofit.create(AppTrackingProtectionWaitlistService::class.java)
-
-    @Provides
-    fun brokenSiteSender(
-        statisticsStore: StatisticsDataStore,
-        variantManager: VariantManager,
-        tdsMetadataDao: TdsMetadataDao,
-        pixel: Pixel,
-        gpc: Gpc,
-        featureToggle: FeatureToggle,
-        @AppCoroutineScope appCoroutineScope: CoroutineScope,
-        appBuildConfig: AppBuildConfig,
-        dispatcherProvider: DispatcherProvider
-    ): BrokenSiteSender =
-        BrokenSiteSubmitter(
-            statisticsStore, variantManager, tdsMetadataDao, gpc, featureToggle,
-            pixel, appCoroutineScope, appBuildConfig, dispatcherProvider
-        )
-
-    @Provides
-    fun surveyService(@Named("api") retrofit: Retrofit): SurveyService =
-        retrofit.create(SurveyService::class.java)
-
-    @Provides
     fun feedbackSubmitter(
         feedbackService: FeedbackService,
         variantManager: VariantManager,
@@ -203,13 +169,19 @@ class NetworkModule {
         statisticsStore: StatisticsDataStore,
         pixel: Pixel,
         @AppCoroutineScope appCoroutineScope: CoroutineScope,
-        appBuildConfig: AppBuildConfig
+        appBuildConfig: AppBuildConfig,
+        dispatcherProvider: DispatcherProvider,
     ): FeedbackSubmitter =
-        FireAndForgetFeedbackSubmitter(feedbackService, variantManager, apiKeyMapper, statisticsStore, pixel, appCoroutineScope, appBuildConfig)
-
-    @Provides
-    fun feedbackService(@Named("api") retrofit: Retrofit): FeedbackService =
-        retrofit.create(FeedbackService::class.java)
+        FireAndForgetFeedbackSubmitter(
+            feedbackService,
+            variantManager,
+            apiKeyMapper,
+            statisticsStore,
+            pixel,
+            appCoroutineScope,
+            appBuildConfig,
+            dispatcherProvider,
+        )
 
     companion object {
         private const val CACHE_SIZE: Long = 10 * 1024 * 1024 // 10MB

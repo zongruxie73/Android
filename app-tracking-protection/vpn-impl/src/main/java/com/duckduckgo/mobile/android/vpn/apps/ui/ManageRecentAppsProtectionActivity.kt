@@ -16,37 +16,46 @@
 
 package com.duckduckgo.mobile.android.vpn.apps.ui
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import androidx.activity.result.ActivityResultLauncher
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.duckduckgo.anvil.annotations.InjectWith
 import com.duckduckgo.app.di.AppCoroutineScope
-import com.duckduckgo.app.global.DuckDuckGoActivity
+import com.duckduckgo.appbuildconfig.api.AppBuildConfig
+import com.duckduckgo.common.ui.DuckDuckGoActivity
+import com.duckduckgo.common.ui.view.addClickableLink
+import com.duckduckgo.common.ui.view.gone
+import com.duckduckgo.common.ui.view.show
+import com.duckduckgo.common.ui.viewbinding.viewBinding
+import com.duckduckgo.common.utils.DispatcherProvider
+import com.duckduckgo.common.utils.extensions.launchAlwaysOnSystemSettings
+import com.duckduckgo.common.utils.extensions.launchIgnoreBatteryOptimizationSettings
 import com.duckduckgo.di.scopes.ActivityScope
-import com.duckduckgo.mobile.android.ui.view.addClickableLink
-import com.duckduckgo.mobile.android.ui.view.gone
-import com.duckduckgo.mobile.android.ui.view.show
-import com.duckduckgo.mobile.android.ui.viewbinding.viewBinding
 import com.duckduckgo.mobile.android.vpn.AppTpVpnFeature
 import com.duckduckgo.mobile.android.vpn.R
 import com.duckduckgo.mobile.android.vpn.VpnFeaturesRegistry
 import com.duckduckgo.mobile.android.vpn.apps.Command
 import com.duckduckgo.mobile.android.vpn.apps.ManageAppsProtectionViewModel
+import com.duckduckgo.mobile.android.vpn.apps.ManageAppsProtectionViewModel.RecommendedSettings
 import com.duckduckgo.mobile.android.vpn.apps.TrackingProtectionAppInfo
 import com.duckduckgo.mobile.android.vpn.apps.ViewState
 import com.duckduckgo.mobile.android.vpn.breakage.ReportBreakageContract
+import com.duckduckgo.mobile.android.vpn.breakage.ReportBreakageScreen
 import com.duckduckgo.mobile.android.vpn.databinding.ActivityManageRecentAppsProtectionBinding
 import com.facebook.shimmer.ShimmerFrameLayout
 import com.google.android.material.snackbar.BaseTransientBottomBar.LENGTH_LONG
 import com.google.android.material.snackbar.Snackbar
+import javax.inject.Inject
+import javax.inject.Provider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @InjectWith(ActivityScope::class)
 class ManageRecentAppsProtectionActivity :
@@ -59,7 +68,13 @@ class ManageRecentAppsProtectionActivity :
     @AppCoroutineScope
     lateinit var appCoroutineScope: CoroutineScope
 
+    @Inject lateinit var dispatcherProvider: DispatcherProvider
+
     @Inject lateinit var vpnFeaturesRegistry: VpnFeaturesRegistry
+
+    @Inject lateinit var reportBreakageContract: Provider<ReportBreakageContract>
+
+    @Inject lateinit var appBuildConfig: AppBuildConfig
 
     private val binding: ActivityManageRecentAppsProtectionBinding by viewBinding()
 
@@ -69,14 +84,16 @@ class ManageRecentAppsProtectionActivity :
 
     private val shimmerLayout by lazy { findViewById<ShimmerFrameLayout>(R.id.manageRecentAppsSkeleton) }
 
-    private val reportBreakage = registerForActivityResult(ReportBreakageContract()) { result ->
-        if (!result.isEmpty()) {
-            Snackbar.make(binding.root, R.string.atp_ReportBreakageSent, LENGTH_LONG).show()
-        }
-    }
+    private lateinit var reportBreakage: ActivityResultLauncher<ReportBreakageScreen>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        reportBreakage = registerForActivityResult(reportBreakageContract.get()) { result ->
+            if (!result.isEmpty()) {
+                Snackbar.make(binding.root, R.string.atp_ReportBreakageSent, LENGTH_LONG).show()
+            }
+        }
 
         setContentView(binding.root)
         setupToolbar(binding.includeToolbar.toolbar)
@@ -93,11 +110,18 @@ class ManageRecentAppsProtectionActivity :
         lifecycle.removeObserver(viewModel)
     }
 
+    @SuppressLint("InlinedApi") // lint doesn't detect appBuildConfig
     private fun bindViews() {
         binding.manageRecentAppsSkeleton.startShimmer()
+        binding.alwaysOn.setOnClickListener {
+            this.launchAlwaysOnSystemSettings()
+        }
+        binding.unrestrictedBatteryUsage.setOnClickListener {
+            this.launchIgnoreBatteryOptimizationSettings()
+        }
         binding.manageRecentAppsReportIssues.addClickableLink(
             REPORT_ISSUES_ANNOTATION,
-            getText(R.string.atp_ManageRecentAppsProtectionReportIssues)
+            getText(R.string.atp_ManageRecentAppsProtectionReportIssues),
         ) {
             launchFeedback()
         }
@@ -108,18 +132,19 @@ class ManageRecentAppsProtectionActivity :
     }
 
     private fun setupRecycler() {
-        adapter = TrackingProtectionAppsAdapter(object : AppProtectionListener {
-            override fun onAppProtectionChanged(
-                excludedAppInfo: TrackingProtectionAppInfo,
-                enabled: Boolean,
-                position: Int
-            ) {
-                viewModel.onAppProtectionChanged(excludedAppInfo, position, enabled)
-            }
-        })
+        adapter = TrackingProtectionAppsAdapter(
+            object : AppProtectionListener {
+                override fun onAppProtectionChanged(
+                    excludedAppInfo: TrackingProtectionAppInfo,
+                    enabled: Boolean,
+                    position: Int,
+                ) {
+                    viewModel.onAppProtectionChanged(excludedAppInfo, position, enabled)
+                }
+            },
+        )
 
-        val recyclerView = binding.manageRecentAppsRecycler
-        recyclerView.adapter = adapter
+        binding.manageRecentAppsRecycler.adapter = adapter
     }
 
     private fun observeViewModel() {
@@ -128,6 +153,11 @@ class ManageRecentAppsProtectionActivity :
                 .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
                 .collect { renderViewState(it) }
         }
+        viewModel.recommendedSettings()
+            .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
+            .onEach { renderRecommendedSettings(it) }
+            .launchIn(lifecycleScope)
+
         viewModel.commands()
             .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
             .onEach { processCommand(it) }
@@ -144,19 +174,41 @@ class ManageRecentAppsProtectionActivity :
             adapter.update(viewState.excludedApps)
             binding.manageRecentAppsRecycler.show()
         }
+        binding.manageRecentAppsShowAll.show()
+        binding.manageRecentAppsDivider.show()
         shimmerLayout.gone()
+    }
+
+    private fun renderRecommendedSettings(state: RecommendedSettings) {
+        val batteryTextTitle = if (state.isIgnoringBatteryOptimizations) {
+            R.string.atp_ManageRecentAppsProtectionUnrestrictedBattTitle
+        } else {
+            R.string.atp_ManageRecentAppsProtectionAllowUnrestrictedBattTitle
+        }
+        val batteryTextByline = if (state.isIgnoringBatteryOptimizations) {
+            R.string.atp_ManageRecentAppsProtectionUnrestrictedBattByline
+        } else {
+            R.string.atp_ManageRecentAppsProtectionAllowUnrestrictedBattByline
+        }
+        binding.unrestrictedBatteryUsage.setPrimaryText(getString(batteryTextTitle))
+        binding.unrestrictedBatteryUsage.setSecondaryText(getString(batteryTextByline))
+
+        // val alwaysOnLeadingIcon = if (state.alwaysOnState) R.drawable.ic_check_color_24 else R.drawable.ic_alert_color_24
+        // binding.alwaysOn.setLeadingIconResource(alwaysOnLeadingIcon)
     }
 
     private fun processCommand(command: Command) {
         when (command) {
             is Command.RestartVpn -> restartVpn()
             is Command.ShowDisableProtectionDialog -> showDisableProtectionDialog(
-                command.excludingReason
+                command.excludingReason,
             )
+
             is Command.ShowEnableProtectionDialog -> showEnableProtectionDialog(
                 command.excludingReason,
-                command.position
+                command.position,
             )
+
             is Command.LaunchFeedback -> reportBreakage.launch(command.reportBreakageScreen)
             is Command.LaunchAllAppsProtection -> startActivity(TrackingProtectionExclusionListActivity.intent(this))
         }
@@ -164,8 +216,10 @@ class ManageRecentAppsProtectionActivity :
 
     private fun restartVpn() {
         // we use the app coroutine scope to ensure this call outlives the Activity
-        appCoroutineScope.launch {
-            vpnFeaturesRegistry.refreshFeature(AppTpVpnFeature.APPTP_VPN)
+        appCoroutineScope.launch(dispatcherProvider.io()) {
+            if (vpnFeaturesRegistry.isFeatureRegistered(AppTpVpnFeature.APPTP_VPN)) {
+                vpnFeaturesRegistry.refreshFeature(AppTpVpnFeature.APPTP_VPN)
+            }
         }
     }
 
@@ -173,22 +227,23 @@ class ManageRecentAppsProtectionActivity :
         val dialog = ManuallyDisableAppProtectionDialog.instance(excludedAppInfo)
         dialog.show(
             supportFragmentManager,
-            ManuallyDisableAppProtectionDialog.TAG_MANUALLY_EXCLUDE_APPS_DISABLE
+            ManuallyDisableAppProtectionDialog.TAG_MANUALLY_EXCLUDE_APPS_DISABLE,
         )
     }
 
     private fun showEnableProtectionDialog(
         excludedAppInfo: TrackingProtectionAppInfo,
-        position: Int
+        position: Int,
     ) {
         val dialog = ManuallyEnableAppProtectionDialog.instance(excludedAppInfo, position)
         dialog.show(
             supportFragmentManager,
-            ManuallyEnableAppProtectionDialog.TAG_MANUALLY_EXCLUDE_APPS_ENABLE
+            ManuallyEnableAppProtectionDialog.TAG_MANUALLY_EXCLUDE_APPS_ENABLE,
         )
     }
 
     override fun onBackPressed() {
+        super.onBackPressed()
         onSupportNavigateUp()
     }
 
@@ -208,7 +263,7 @@ class ManageRecentAppsProtectionActivity :
     override fun onAppProtectionDisabled(
         appName: String,
         packageName: String,
-        report: Boolean
+        report: Boolean,
     ) {
         viewModel.onAppProtectionDisabled(appName = appName, packageName = packageName, report = report)
     }
@@ -229,8 +284,8 @@ class ManageRecentAppsProtectionActivity :
 
     companion object {
         private const val REPORT_ISSUES_ANNOTATION = "report_issues_link"
-        fun intent(
-            context: Context
+        internal fun intent(
+            context: Context,
         ): Intent {
             return Intent(context, ManageRecentAppsProtectionActivity::class.java)
         }

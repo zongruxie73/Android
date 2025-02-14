@@ -34,16 +34,15 @@ import com.duckduckgo.app.browser.favicon.FaviconManager
 import com.duckduckgo.app.fire.fireproofwebsite.data.FireproofWebsiteEntity
 import com.duckduckgo.app.fire.fireproofwebsite.data.website
 import com.duckduckgo.app.fire.fireproofwebsite.ui.FireproofWebsitesViewModel.Command.ShowAutomaticFireproofSettingSelectionDialog
-import com.duckduckgo.app.settings.db.SettingsSharedPreferences.LoginDetectorPrefsMapper.AutomaticFireproofSetting
+import com.duckduckgo.common.ui.menu.PopupMenu
 import com.duckduckgo.mobile.android.databinding.RowOneLineListItemBinding
-import com.duckduckgo.mobile.android.ui.menu.PopupMenu
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
 class FireproofWebsiteAdapter(
     private val viewModel: FireproofWebsitesViewModel,
     private val lifecycleOwner: LifecycleOwner,
-    private val faviconManager: FaviconManager
+    private val faviconManager: FaviconManager,
 ) : RecyclerView.Adapter<FireproofWebSiteViewHolder>() {
 
     companion object {
@@ -76,7 +75,7 @@ class FireproofWebsiteAdapter(
 
     override fun onCreateViewHolder(
         parent: ViewGroup,
-        viewType: Int
+        viewType: Int,
     ): FireproofWebSiteViewHolder {
         val inflater = LayoutInflater.from(parent.context)
         return when (viewType) {
@@ -88,12 +87,12 @@ class FireproofWebsiteAdapter(
                 val binding = ViewFireproofWebsiteSettingsSelectionBinding.inflate(inflater, parent, false)
                 FireproofWebSiteViewHolder.FireproofWebsiteSettingSelectionViewHolder(
                     binding,
-                    viewModel
+                    viewModel,
                 )
             }
             SECTION_TITLE_TYPE -> {
                 val binding = ViewFireproofTitleBinding.inflate(inflater, parent, false)
-                binding.fireproofWebsiteSectionTitle.setText(R.string.fireproofWebsiteItemsSectionTitle)
+                binding.fireproofWebsiteSectionTitle.primaryText = binding.root.context.getString(R.string.fireproofWebsiteItemsSectionTitle)
                 FireproofWebSiteViewHolder.FireproofWebsiteSimpleViewViewHolder(binding)
             }
             FIREPROOF_WEBSITE_TYPE -> {
@@ -103,7 +102,7 @@ class FireproofWebsiteAdapter(
                     binding,
                     viewModel,
                     lifecycleOwner,
-                    faviconManager
+                    faviconManager,
                 )
             }
             EMPTY_STATE_TYPE -> {
@@ -124,7 +123,7 @@ class FireproofWebsiteAdapter(
 
     override fun onBindViewHolder(
         holder: FireproofWebSiteViewHolder,
-        position: Int
+        position: Int,
     ) {
         when (holder) {
             is FireproofWebSiteViewHolder.FireproofWebsiteSettingSelectionViewHolder -> {
@@ -133,9 +132,9 @@ class FireproofWebsiteAdapter(
             is FireproofWebSiteViewHolder.FireproofWebsiteItemViewHolder -> holder.bind(
                 fireproofWebsites[
                     getWebsiteItemPosition(
-                        position
-                    )
-                ]
+                        position,
+                    ),
+                ],
             )
             else -> {}
         }
@@ -168,12 +167,12 @@ sealed class FireproofWebSiteViewHolder(itemView: View) : RecyclerView.ViewHolde
 
     class FireproofWebsiteSettingSelectionViewHolder(
         private val binding: ViewFireproofWebsiteSettingsSelectionBinding,
-        private val viewModel: FireproofWebsitesViewModel
+        private val viewModel: FireproofWebsitesViewModel,
     ) :
         FireproofWebSiteViewHolder(binding.root) {
         fun bind(automaticFireproofSetting: AutomaticFireproofSetting) {
-            binding.fireproofWebsiteUserSetting.text = itemView.context.getString(automaticFireproofSetting.stringRes)
-            binding.fireproofWebsiteSettingsSelection.setOnClickListener {
+            binding.fireproofWebsiteSettingListItem.setSecondaryText(itemView.context.getString(automaticFireproofSetting.stringRes))
+            binding.fireproofWebsiteSettingListItem.setOnClickListener {
                 viewModel.command.value = ShowAutomaticFireproofSettingSelectionDialog(automaticFireproofSetting)
             }
         }
@@ -186,7 +185,7 @@ sealed class FireproofWebSiteViewHolder(itemView: View) : RecyclerView.ViewHolde
         private val binding: RowOneLineListItemBinding,
         private val viewModel: FireproofWebsitesViewModel,
         private val lifecycleOwner: LifecycleOwner,
-        private val faviconManager: FaviconManager
+        private val faviconManager: FaviconManager,
     ) : FireproofWebSiteViewHolder(binding.root) {
 
         private val context: Context = binding.root.context
@@ -198,11 +197,12 @@ sealed class FireproofWebSiteViewHolder(itemView: View) : RecyclerView.ViewHolde
 
             listItem.contentDescription = context.getString(
                 R.string.fireproofWebsiteOverflowContentDescription,
-                entity.website()
+                entity.website(),
             )
 
-            listItem.setPrimaryText(entity.website())
             loadFavicon(entity.domain, listItem.leadingIcon())
+            listItem.setPrimaryText(entity.website())
+            listItem.showTrailingIcon()
             listItem.setTrailingIconClickListener { anchor ->
                 showOverFlowMenu(anchor, entity)
             }
@@ -210,16 +210,16 @@ sealed class FireproofWebSiteViewHolder(itemView: View) : RecyclerView.ViewHolde
 
         private fun loadFavicon(
             url: String,
-            image: ImageView
+            image: ImageView,
         ) {
             lifecycleOwner.lifecycleScope.launch {
-                faviconManager.loadToViewFromLocalOrFallback(url = url, view = image)
+                faviconManager.loadToViewFromLocalWithPlaceholder(url = url, view = image)
             }
         }
 
         private fun showOverFlowMenu(
             anchor: View,
-            entity: FireproofWebsiteEntity
+            entity: FireproofWebsiteEntity,
         ) {
             val popupMenu = PopupMenu(layoutInflater, R.layout.popup_window_remove_menu)
             val view = popupMenu.contentView

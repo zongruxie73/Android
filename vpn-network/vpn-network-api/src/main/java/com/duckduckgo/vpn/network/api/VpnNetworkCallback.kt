@@ -38,16 +38,16 @@ interface VpnNetworkCallback {
     fun onDnsResolved(dnsRR: DnsRR)
 
     /**
-     * Called when the VPN network resolves the destination hostname of an IP packet using the SNI header
-     * @param sniRR is the resolved SNI record
-     */
-    fun onSniResolved(sniRR: SniRR)
-
-    /**
      * Called by the VPN network to know if a domain is blocked or not. This is used to perform DNS-base tracker blocking
      * @param domainRR is the domain record
      */
     fun isDomainBlocked(domainRR: DomainRR): Boolean
+
+    /**
+     * Called by the VPN network to report an error parsing TLS packets.
+     * The implementation of this method should just log the issue and continue
+     */
+    fun reportTLSParsingError(errorCode: Int) {}
 
     /**
      * Called by the VPN network to know if a particular IP address is blocked or not. This can be combined with the

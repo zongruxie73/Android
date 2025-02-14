@@ -18,9 +18,9 @@
 
 package com.duckduckgo.mobile.android.vpn.service
 
+import java.net.InetAddress
 import org.junit.Assert.*
 import org.junit.Test
-import java.net.InetAddress
 
 class VpnRoutesTest {
 
@@ -54,6 +54,11 @@ class VpnRoutesTest {
     }
 
     @Test
+    fun `all CGNAT IP addresses are excluded from VPN`() {
+        assertNoRoutes(findRoutes("100.64.0.0", "100.127.255.255"))
+    }
+
+    @Test
     fun `all multicast addresses between 224·0·0·0 and 239·255·255·255 are excluded from VPN`() {
         val fromRange = "224.0.0.0"
         val toRange = "239.255.255.255"
@@ -61,14 +66,21 @@ class VpnRoutesTest {
     }
 
     @Test
-    fun `broadcast address 255·255·255·255 is excluded from VPN`() {
-        val fromRange = "255.255.255.255"
+    fun `loopback IP addresses are excluded form VPN`() {
+        val fromRange = "127.0.0.0"
+        val toRange = "127.255.255.255"
+        assertNoRoutes(findRoutes(fromRange, toRange))
+    }
+
+    @Test
+    fun `class D IP address 240·0·0·0 to 255·255·255·255 are excluded from VPN`() {
+        val fromRange = "240.0.0.0"
         val toRange = "255.255.255.255"
         assertNoRoutes(findRoutes(fromRange, toRange))
     }
 
     @Test
-    fun `all addresses between 0-0-0-0 and 9-255-255-255 range go through VPN`() {
+    fun `all addresses between 0·0·0·0 and 9·255·255·255 range go through VPN`() {
         val fromRange = "0.0.0.0"
         val toRange = "9.255.255.255"
         val routes = findRoutes(fromRange, toRange)
@@ -78,7 +90,7 @@ class VpnRoutesTest {
     }
 
     @Test
-    fun `all addresses between 10-0-0-0 and 66-94-1-255 range go through VPN`() {
+    fun `all addresses between 10·0·0·0 and 66·94·1·255 range go through VPN`() {
         val fromRange = "11.0.0.0"
         val toRange = "66.94.1.255"
         val routes = findRoutes(fromRange, toRange)
@@ -88,7 +100,7 @@ class VpnRoutesTest {
     }
 
     @Test
-    fun `all addresses between 66·94·3·0 range and 66-94-5-255 range go through VPN`() {
+    fun `all addresses between 66·94·3·0 range and 66·94·5·255 range go through VPN`() {
         val fromRange = "66.94.3.0"
         val toRange = "66.94.5.255"
         val routes = findRoutes(fromRange, toRange)
@@ -98,7 +110,7 @@ class VpnRoutesTest {
     }
 
     @Test
-    fun `all addresses between 66·94·12·0 range and 66-173-255-255 range go through VPN`() {
+    fun `all addresses between 66·94·12·0 range and 66·173·255·255 range go through VPN`() {
         val fromRange = "66.94.12.0"
         val toRange = "66.173.255.255"
         val routes = findRoutes(fromRange, toRange)
@@ -108,7 +120,7 @@ class VpnRoutesTest {
     }
 
     @Test
-    fun `all addresses between 66·175·0·0 range and 69-81-255-255 range go through VPN`() {
+    fun `all addresses between 66·175·0·0 range and 69·81·255·255 range go through VPN`() {
         val fromRange = "66.175.0.0"
         val toRange = "69.81.255.255"
         val routes = findRoutes(fromRange, toRange)
@@ -118,7 +130,7 @@ class VpnRoutesTest {
     }
 
     @Test
-    fun `all addresses between 69·84·0·0 range and 69-95-255-255 range go through VPN`() {
+    fun `all addresses between 69·84·0·0 range and 69·95·255·255 range go through VPN`() {
         val fromRange = "69.84.0.0"
         val toRange = "69.95.255.255"
         val routes = findRoutes(fromRange, toRange)
@@ -128,7 +140,7 @@ class VpnRoutesTest {
     }
 
     @Test
-    fun `all addresses between 69·104·0·0 range and 70-191-255-255 range go through VPN`() {
+    fun `all addresses between 69·104·0·0 range and 70·191·255·255 range go through VPN`() {
         val fromRange = "69.104.0.0"
         val toRange = "70.191.255.255"
         val routes = findRoutes(fromRange, toRange)
@@ -138,7 +150,7 @@ class VpnRoutesTest {
     }
 
     @Test
-    fun `all addresses between 70·224·0·0 range and 71-255-255-255 range go through VPN`() {
+    fun `all addresses between 70·224·0·0 range and 71·255·255·255 range go through VPN`() {
         val fromRange = "70.224.0.0"
         val toRange = "71.255.255.255"
         val routes = findRoutes(fromRange, toRange)
@@ -148,7 +160,7 @@ class VpnRoutesTest {
     }
 
     @Test
-    fun `all addresses between 72·128·0·0 range and 75-127-255-255 range go through VPN`() {
+    fun `all addresses between 72·128·0·0 range and 75·127·255·255 range go through VPN`() {
         val fromRange = "72.128.0.0"
         val toRange = "75.127.255.255"
         val routes = findRoutes(fromRange, toRange)
@@ -178,8 +190,28 @@ class VpnRoutesTest {
     }
 
     @Test
-    fun `all addresses between 98·0·0·0 range and 169·253·255·255 range go through VPN`() {
+    fun `all addresses between 98·0·0·0 range and 100·63·255·255 range go through VPN`() {
         val fromRange = "98.0.0.0"
+        val toRange = "100.63.255.255"
+        val routes = findRoutes(fromRange, toRange)
+        assertIpGreaterOrEqualTo(fromRange, routes.first().lowAddress)
+        assertIpLesserOrEqualTo(toRange, routes.last().highAddress)
+        assertNoGaps(routes)
+    }
+
+    @Test
+    fun `all addresses between 100·128·0·0 range and 126·255·255·255 range go through VPN`() {
+        val fromRange = "100.128.0.0"
+        val toRange = "126.255.255.255"
+        val routes = findRoutes(fromRange, toRange)
+        assertIpGreaterOrEqualTo(fromRange, routes.first().lowAddress)
+        assertIpLesserOrEqualTo(toRange, routes.last().highAddress)
+        assertNoGaps(routes)
+    }
+
+    @Test
+    fun `all addresses between 128·0·0·0 range and 169·253·255·255 range go through VPN`() {
+        val fromRange = "128.0.0.0"
         val toRange = "169.253.255.255"
         val routes = findRoutes(fromRange, toRange)
         assertIpGreaterOrEqualTo(fromRange, routes.first().lowAddress)
@@ -238,16 +270,6 @@ class VpnRoutesTest {
     }
 
     @Test
-    fun `all addresses between multicast range and broadcast address go through VPN`() {
-        val fromRange = "240.0.0.0"
-        val toRange = "255.255.255.254"
-        val routes = findRoutes(fromRange, toRange)
-        assertIpGreaterOrEqualTo(fromRange, routes.first().lowAddress)
-        assertIpLesserOrEqualTo(toRange, routes.last().highAddress)
-        assertNoGaps(routes)
-    }
-
-    @Test
     fun `increment IP address`() {
         assertEquals("0.0.0.1", "0.0.0.0".incrementIpAddress())
         assertEquals("0.0.0.255", "0.0.0.254".incrementIpAddress())
@@ -264,21 +286,21 @@ class VpnRoutesTest {
 
     private fun assertIpLesserOrEqualTo(
         ipAddress: String,
-        compareTo: String
+        compareTo: String,
     ) {
         assertTrue("$ipAddress needs to be <= $compareTo", ipAddress.normalizeIpAddress() <= compareTo.normalizeIpAddress())
     }
 
     private fun assertIpGreaterOrEqualTo(
         ipAddress: String,
-        compareTo: String
+        compareTo: String,
     ) {
         assertTrue("$ipAddress needs to be >= $compareTo", ipAddress.normalizeIpAddress() >= compareTo.normalizeIpAddress())
     }
 
     private fun findRoutes(
         lowest: String,
-        highest: String
+        highest: String,
     ): List<Route> {
         return VpnRoutes.includedRoutes
             .filter { it.lowAddress.normalizeIpAddress() <= highest.normalizeIpAddress() }
@@ -319,7 +341,7 @@ class VpnRoutesTest {
             split(".")[0].padStart(3, '0'),
             split(".")[1].padStart(3, '0'),
             split(".")[2].padStart(3, '0'),
-            split(".")[3].padStart(3, '0')
+            split(".")[3].padStart(3, '0'),
         )
     }
 

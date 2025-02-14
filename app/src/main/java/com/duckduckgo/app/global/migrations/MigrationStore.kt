@@ -21,8 +21,8 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.duckduckgo.di.scopes.AppScope
 import com.squareup.anvil.annotations.ContributesBinding
-import javax.inject.Inject
 import dagger.SingleInstanceIn
+import javax.inject.Inject
 
 interface MigrationStore {
     var version: Int
@@ -32,8 +32,7 @@ interface MigrationStore {
 @SingleInstanceIn(AppScope::class)
 class MigrationSharedPreferences @Inject constructor(private val context: Context) : MigrationStore {
 
-    private val preferences: SharedPreferences
-        get() = context.getSharedPreferences(FILENAME, Context.MODE_PRIVATE)
+    private val preferences: SharedPreferences by lazy { context.getSharedPreferences(FILENAME, Context.MODE_PRIVATE) }
 
     override var version: Int
         get() = preferences.getInt(KEY_VERSION, 0)

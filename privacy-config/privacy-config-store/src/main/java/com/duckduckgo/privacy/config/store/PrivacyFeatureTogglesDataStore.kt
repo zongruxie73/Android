@@ -24,7 +24,7 @@ import com.duckduckgo.privacy.config.api.PrivacyFeatureName
 interface PrivacyFeatureTogglesDataStore {
     fun get(
         featureName: PrivacyFeatureName,
-        defaultValue: Boolean
+        defaultValue: Boolean,
     ): Boolean
 
     fun getMinSupportedVersion(featureName: PrivacyFeatureName): Int
@@ -36,12 +36,11 @@ interface PrivacyFeatureTogglesDataStore {
 class PrivacyFeatureTogglesSharedPreferences constructor(private val context: Context) :
     PrivacyFeatureTogglesDataStore {
 
-    private val preferences: SharedPreferences
-        get() = context.getSharedPreferences(FILENAME, Context.MODE_PRIVATE)
+    private val preferences: SharedPreferences by lazy { context.getSharedPreferences(FILENAME, Context.MODE_PRIVATE) }
 
     override fun get(
         featureName: PrivacyFeatureName,
-        defaultValue: Boolean
+        defaultValue: Boolean,
     ): Boolean {
         return preferences.getBoolean(featureName.value, defaultValue)
     }
@@ -72,5 +71,5 @@ class PrivacyFeatureTogglesSharedPreferences constructor(private val context: Co
 data class PrivacyFeatureToggles(
     val featureName: String,
     val enabled: Boolean,
-    val minSupportedVersion: Int?
+    val minSupportedVersion: Int?,
 )

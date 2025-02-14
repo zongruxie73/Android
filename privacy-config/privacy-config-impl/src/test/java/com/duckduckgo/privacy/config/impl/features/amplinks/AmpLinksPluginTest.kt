@@ -16,7 +16,7 @@
 
 package com.duckduckgo.privacy.config.impl.features.amplinks
 
-import com.duckduckgo.app.FileUtilities
+import com.duckduckgo.common.test.FileUtilities
 import com.duckduckgo.privacy.config.api.PrivacyFeatureName
 import com.duckduckgo.privacy.config.store.*
 import com.duckduckgo.privacy.config.store.features.amplinks.AmpLinksRepository
@@ -65,7 +65,7 @@ class AmpLinksPluginTest {
     fun whenFeatureNameMatchesAmpLinksAndIsNotEnabledThenStoreFeatureDisabled() {
         val jsonString = FileUtilities.loadText(
             AmpLinksPluginTest::class.java.classLoader!!,
-            "json/amp_links_disabled.json"
+            "json/amp_links_disabled.json",
         )
 
         testee.store(FEATURE_NAME_VALUE, jsonString)

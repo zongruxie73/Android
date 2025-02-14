@@ -24,11 +24,11 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import androidx.annotation.RequiresApi
 import com.duckduckgo.di.scopes.ActivityScope
-import com.duckduckgo.voice.impl.listeningmode.OnDeviceSpeechRecognizer.Event
 import com.duckduckgo.voice.impl.listeningmode.OnDeviceSpeechRecognizer.Companion
+import com.duckduckgo.voice.impl.listeningmode.OnDeviceSpeechRecognizer.Event
 import com.squareup.anvil.annotations.ContributesBinding
-import timber.log.Timber
 import javax.inject.Inject
+import timber.log.Timber
 
 interface OnDeviceSpeechRecognizer {
     companion object {
@@ -43,13 +43,14 @@ interface OnDeviceSpeechRecognizer {
         data class PartialResultReceived(val partialResult: String) : Event()
         data class RecognitionSuccess(val result: String) : Event()
         data class VolumeUpdateReceived(val normalizedVolume: Float) : Event()
-        object RecognitionTimedOut : Event()
+        data class RecognitionTimedOut(val error: Int) : Event()
+        data class RecognitionFailed(val error: Int) : Event()
     }
 }
 
 @ContributesBinding(ActivityScope::class)
 class DefaultOnDeviceSpeechRecognizer @Inject constructor(
-    private val context: Context
+    private val context: Context,
 ) : OnDeviceSpeechRecognizer {
 
     private var speechRecognizer: SpeechRecognizer? = null
@@ -70,7 +71,7 @@ class DefaultOnDeviceSpeechRecognizer @Inject constructor(
 
         override fun onRmsChanged(rmsdB: Float) {
             _eventHandler(
-                Event.VolumeUpdateReceived(rmsdB.clean())
+                Event.VolumeUpdateReceived(rmsdB.clean()),
             )
         }
 
@@ -82,30 +83,33 @@ class DefaultOnDeviceSpeechRecognizer @Inject constructor(
 
         override fun onError(error: Int) {
             when (error) {
-                SpeechRecognizer.ERROR_NO_MATCH -> _eventHandler(Event.RecognitionTimedOut)
-                else -> Timber.e("SpeechRecognizer error: $error")
+                SpeechRecognizer.ERROR_NO_MATCH -> _eventHandler(Event.RecognitionTimedOut(error))
+                else -> {
+                    Timber.e("SpeechRecognizer error: $error")
+                    _eventHandler(Event.RecognitionFailed(error))
+                }
             }
         }
 
         override fun onResults(results: Bundle?) {
             _eventHandler(
                 Event.RecognitionSuccess(
-                    results?.extractResult() ?: ""
-                )
+                    results?.extractResult() ?: "",
+                ),
             )
         }
 
         override fun onPartialResults(partialResults: Bundle?) {
             _eventHandler(
                 Event.PartialResultReceived(
-                    partialResults?.extractResult() ?: ""
-                )
+                    partialResults?.extractResult() ?: "",
+                ),
             )
         }
 
         override fun onEvent(
             eventType: Int,
-            params: Bundle?
+            params: Bundle?,
         ) {
         }
     }
@@ -115,9 +119,15 @@ class DefaultOnDeviceSpeechRecognizer @Inject constructor(
     @RequiresApi(VERSION_CODES.S)
     override fun start(eventHandler: (Event) -> Unit) {
         _eventHandler = eventHandler
-        speechRecognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
-        speechRecognizer?.setRecognitionListener(recognitionListener)
-        speechRecognizer?.startListening(speechRecognizerIntent)
+        runCatching {
+            speechRecognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+        }.onFailure {
+            _eventHandler(Event.RecognitionFailed(-1))
+            Timber.e(it, "Failed to initialize SpeechRecognizer")
+        }.onSuccess {
+            speechRecognizer?.setRecognitionListener(recognitionListener)
+            speechRecognizer?.startListening(speechRecognizerIntent)
+        }
     }
 
     override fun stop() {

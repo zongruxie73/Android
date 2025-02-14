@@ -14,10 +14,11 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-<resources>
-    <!-- Autoconsent -->
-    <string name="autoconsentTitle">Felugró sütiablakok kezelése</string>
-    <string name="autoconsentDescription">Amikor a DuckDuckGo a meglátogatott webhelyeken sütik elfogadására szolgáló felugró ablakokat észlel, a sütik minimalizálása és az adatvédelem maximalizálása érdekében automatikusan megadhatjuk a sütikre vonatkozó beállításaidat, és bezárhatjuk a felugró ablakokat.</string>
-    <string name="autoconsentToggle">A DuckDuckGo kezelheti a sütik elfogadására szolgáló felugró ablakokat</string>
-
+<!-- smartling.entity_escaping = false -->
+<!-- smartling.instruction_attributes = instruction -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="autoconsentTitle">Felugró sütiablak elleni védelem</string>
+    <string name="autoconsentDescription"><![CDATA[Amikor a DuckDuckGo a meglátogatott webhelyeken sütik elfogadására szolgáló felugró ablakokat észlel, a sütik minimalizálása és az adatvédelem maximalizálása érdekében automatikusan megadhatjuk a sütikre vonatkozó beállításaidat, és bezárhatjuk a felugró ablakokat. <u><a href=\"\">További részletek</a><u/>]]></string>
+    <string name="autoconsentDescriptionNew"><![CDATA[A DuckDuckGo megpróbálja kiválasztani a rendelkezésre álló leginkább privát beállításokat, és elrejteni az ilyen felugró ablakokat.\n<a href=\"\">További részletek</a>]]></string>
+    <string name="autoconsentToggle">A DuckDuckGo kezelje a felugró sütiablakokat</string>
 </resources>

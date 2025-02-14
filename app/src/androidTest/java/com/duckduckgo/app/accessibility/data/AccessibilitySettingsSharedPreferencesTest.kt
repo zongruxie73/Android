@@ -19,22 +19,19 @@ package com.duckduckgo.app.accessibility.data
 import android.content.Context
 import androidx.test.platform.app.InstrumentationRegistry
 import app.cash.turbine.test
-import com.duckduckgo.app.CoroutineTestRule
-import kotlinx.coroutines.test.runTest
 import com.duckduckgo.app.accessibility.data.AccessibilitySettingsSharedPreferences.Companion.FONT_SIZE_DEFAULT
+import com.duckduckgo.common.test.CoroutineTestRule
 import junit.framework.Assert.*
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlin.time.ExperimentalTime
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
-import kotlin.time.ExperimentalTime
 
 @ExperimentalTime
-@ExperimentalCoroutinesApi
 class AccessibilitySettingsSharedPreferencesTest {
 
-    @ExperimentalCoroutinesApi
     @get:Rule
     var coroutineRule = CoroutineTestRule()
 

@@ -37,7 +37,7 @@ import javax.inject.Inject
 interface ActivityResultLauncherWrapper {
     fun register(
         caller: ActivityResultCaller,
-        request: Request
+        request: Request,
     )
 
     fun launch(action: Action)
@@ -51,21 +51,21 @@ interface ActivityResultLauncherWrapper {
 
     enum class Action {
         LaunchPermissionRequest,
-        LaunchVoiceSearch
+        LaunchVoiceSearch,
     }
 }
 
 @ContributesBinding(ActivityScope::class)
 class RealActivityResultLauncherWrapper @Inject constructor(
-    private val context: Context
+    private val context: Context,
 ) : ActivityResultLauncherWrapper {
 
-    private lateinit var permissionLauncher: ActivityResultLauncher<String>
+    private var permissionLauncher: ActivityResultLauncher<String>? = null
     private lateinit var voiceSearchActivityLaucher: ActivityResultLauncher<Intent>
 
     override fun register(
         caller: ActivityResultCaller,
-        request: Request
+        request: Request,
     ) {
         when (request) {
             is Permission -> registerPermissionRequest(caller, request.onResult)
@@ -84,7 +84,7 @@ class RealActivityResultLauncherWrapper @Inject constructor(
 
     private fun registerPermissionRequest(
         caller: ActivityResultCaller,
-        onResult: (Boolean) -> Unit
+        onResult: (Boolean) -> Unit,
     ) {
         permissionLauncher = caller.registerForActivityResult(RequestPermission()) {
             onResult(it)
@@ -103,6 +103,6 @@ class RealActivityResultLauncherWrapper @Inject constructor(
     }
 
     private fun launchPermissionRequest() {
-        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        permissionLauncher?.launch(Manifest.permission.RECORD_AUDIO)
     }
 }

@@ -18,17 +18,17 @@ package com.duckduckgo.app.global.store
 
 import android.content.Context
 import androidx.webkit.WebViewCompat
-import com.duckduckgo.app.playstore.PlayStoreUtils
-import com.duckduckgo.app.statistics.VariantManager
 import com.duckduckgo.app.statistics.store.StatisticsDataStore
 import com.duckduckgo.browser.api.AppProperties
+import com.duckduckgo.common.utils.playstore.PlayStoreUtils
+import com.duckduckgo.experiments.api.VariantManager
 import timber.log.Timber
 
 class AndroidAppProperties(
     private val appContext: Context,
     private val variantManager: VariantManager,
     private val playStoreUtils: PlayStoreUtils,
-    private val statisticsStore: StatisticsDataStore
+    private val statisticsStore: StatisticsDataStore,
 ) : AppProperties {
 
     override fun atb(): String {
@@ -44,7 +44,7 @@ class AndroidAppProperties(
     }
 
     override fun expVariant(): String {
-        return variantManager.getVariant().key
+        return variantManager.getVariantKey().orEmpty()
     }
 
     override fun installedGPlay(): Boolean {

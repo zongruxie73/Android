@@ -20,10 +20,9 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.duckduckgo.app.CoroutineTestRule
+import com.duckduckgo.common.test.CoroutineTestRule
 import com.duckduckgo.downloads.store.DownloadStatus.FINISHED
 import com.duckduckgo.downloads.store.DownloadStatus.STARTED
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -33,7 +32,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-@ExperimentalCoroutinesApi
 @RunWith(AndroidJUnit4::class)
 class DownloadsDaoTest {
 
@@ -41,7 +39,6 @@ class DownloadsDaoTest {
     @Suppress("unused")
     var instantTaskExecutorRule = InstantTaskExecutorRule()
 
-    @ExperimentalCoroutinesApi
     @get:Rule
     var coroutinesTestRule = CoroutineTestRule()
 
@@ -75,7 +72,7 @@ class DownloadsDaoTest {
     fun whenDownloadItemsAddedThenTheyAreInTheList() = runTest {
         val downloadItems = listOf(
             oneItem(),
-            otherItem()
+            otherItem(),
         )
 
         dao.insertAll(downloadItems)
@@ -94,7 +91,7 @@ class DownloadsDaoTest {
         dao.update(
             downloadId = downloadItem.downloadId,
             downloadStatus = updatedStatus,
-            contentLength = updatedContentLength
+            contentLength = updatedContentLength,
         )
 
         val list = dao.getDownloads()
@@ -113,7 +110,7 @@ class DownloadsDaoTest {
         dao.update(
             fileName = downloadItem.fileName,
             downloadStatus = updatedStatus,
-            contentLength = updatedContentLength
+            contentLength = updatedContentLength,
         )
 
         val list = dao.getDownloads()
@@ -137,7 +134,7 @@ class DownloadsDaoTest {
     fun whenDownloadItemsDeletedThenTheyAreNoLongerInTheList() = runTest {
         val downloadItems = listOf(
             oneItem(),
-            otherItem()
+            otherItem(),
         )
         dao.insertAll(downloadItems)
 
@@ -152,7 +149,7 @@ class DownloadsDaoTest {
         val itemToRetrieve = oneItem()
         val downloadItems = listOf(
             otherItem(),
-            itemToRetrieve
+            itemToRetrieve,
         )
         dao.insertAll(downloadItems)
 
@@ -169,7 +166,7 @@ class DownloadsDaoTest {
             fileName = "file.jpg",
             contentLength = 100L,
             createdAt = "2022-02-21T10:56:22",
-            filePath = "/"
+            filePath = "/",
         )
 
     private fun otherItem() =
@@ -180,6 +177,6 @@ class DownloadsDaoTest {
             fileName = "other-file.jpg",
             contentLength = 120L,
             createdAt = "2022-02-21T10:56:22",
-            filePath = "/"
+            filePath = "/",
         )
 }

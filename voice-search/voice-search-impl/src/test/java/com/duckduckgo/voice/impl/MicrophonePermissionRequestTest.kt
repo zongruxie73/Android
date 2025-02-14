@@ -17,10 +17,10 @@
 package com.duckduckgo.voice.impl
 
 import com.duckduckgo.app.statistics.pixels.Pixel
-import com.duckduckgo.voice.store.VoiceSearchRepository
 import com.duckduckgo.voice.impl.ActivityResultLauncherWrapper.Action.LaunchPermissionRequest
 import com.duckduckgo.voice.impl.fakes.FakeActivityResultLauncherWrapper
 import com.duckduckgo.voice.impl.fakes.FakeVoiceSearchPermissionDialogsLauncher
+import com.duckduckgo.voice.store.VoiceSearchRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -28,8 +28,11 @@ import org.junit.Before
 import org.junit.Test
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 
 class MicrophonePermissionRequestTest {
@@ -38,6 +41,9 @@ class MicrophonePermissionRequestTest {
 
     @Mock
     private lateinit var voiceSearchRepository: VoiceSearchRepository
+
+    @Mock
+    private lateinit var permissionRationale: PermissionRationale
 
     private lateinit var voiceSearchPermissionDialogsLauncher: FakeVoiceSearchPermissionDialogsLauncher
 
@@ -54,16 +60,22 @@ class MicrophonePermissionRequestTest {
             pixel,
             voiceSearchRepository,
             voiceSearchPermissionDialogsLauncher,
-            activityResultLauncherWrapper
+            activityResultLauncherWrapper,
+            permissionRationale,
         )
     }
 
     @Test
     fun whenPermissionRequestResultIsTrueThenInvokeOnPermissionsGranted() {
         var permissionGranted = false
-        testee.registerResultsCallback(mock(), mock()) {
-            permissionGranted = true
-        }
+        testee.registerResultsCallback(
+            mock(),
+            mock(),
+            onPermissionsGranted = {
+                permissionGranted = true
+            },
+            mock(),
+        )
 
         val lastKnownRequest = activityResultLauncherWrapper.lastKnownRequest as ActivityResultLauncherWrapper.Request.Permission
         lastKnownRequest.onResult(true)
@@ -72,9 +84,10 @@ class MicrophonePermissionRequestTest {
     }
 
     @Test
-    fun whenPermissionRequestResultIsFalseThenOnPermissionsGrantedNotInvoked() {
+    fun whenPermissionRequestResultIsFalseThenOnPermissionsGrantedNotInvokedAndDeclinePermissionForever() {
+        whenever(permissionRationale.shouldShow(any())).thenReturn(false)
         var permissionGranted = false
-        testee.registerResultsCallback(mock(), mock()) {
+        testee.registerResultsCallback(mock(), mock(), mock()) {
             permissionGranted = true
         }
 
@@ -82,13 +95,29 @@ class MicrophonePermissionRequestTest {
         lastKnownRequest.onResult(false)
 
         assertFalse(permissionGranted)
+        verify(voiceSearchRepository).declinePermissionForever()
+    }
+
+    @Test
+    fun whenPermissionRequestResultIsFalseThenOnPermissionsGrantedNotInvoked() {
+        whenever(permissionRationale.shouldShow(any())).thenReturn(true)
+        var permissionGranted = false
+        testee.registerResultsCallback(mock(), mock(), mock()) {
+            permissionGranted = true
+        }
+
+        val lastKnownRequest = activityResultLauncherWrapper.lastKnownRequest as ActivityResultLauncherWrapper.Request.Permission
+        lastKnownRequest.onResult(false)
+
+        assertFalse(permissionGranted)
+        verifyNoInteractions(voiceSearchRepository)
     }
 
     @Test
     fun whenPermissionDeclinedForeverThenLaunchNoMicAccessDialog() {
         whenever(voiceSearchRepository.getHasPermissionDeclinedForever()).thenReturn(true)
 
-        testee.registerResultsCallback(mock(), mock()) { }
+        testee.registerResultsCallback(mock(), mock(), mock()) { }
         testee.launch(mock())
 
         assertFalse(voiceSearchPermissionDialogsLauncher.rationaleDialogShown)
@@ -96,11 +125,22 @@ class MicrophonePermissionRequestTest {
     }
 
     @Test
+    fun whenLaunchNoMicAccessDialogDeclinedThenShowRemoveVoiceSearchDialog() {
+        whenever(voiceSearchRepository.getHasPermissionDeclinedForever()).thenReturn(true)
+
+        testee.registerResultsCallback(mock(), mock(), mock()) { }
+        testee.launch(mock())
+        voiceSearchPermissionDialogsLauncher.boundNoMicAccessDialogDeclined.invoke()
+
+        assertTrue(voiceSearchPermissionDialogsLauncher.removeVoiceSearchDialogShown)
+    }
+
+    @Test
     fun whenRationalDialogNotYetAcceptedThenLaunchRationalDialog() {
         whenever(voiceSearchRepository.getHasPermissionDeclinedForever()).thenReturn(false)
         whenever(voiceSearchRepository.getHasAcceptedRationaleDialog()).thenReturn(false)
 
-        testee.registerResultsCallback(mock(), mock()) { }
+        testee.registerResultsCallback(mock(), mock(), mock()) { }
         testee.launch(mock())
 
         assertTrue(voiceSearchPermissionDialogsLauncher.rationaleDialogShown)
@@ -112,7 +152,7 @@ class MicrophonePermissionRequestTest {
         whenever(voiceSearchRepository.getHasPermissionDeclinedForever()).thenReturn(false)
         whenever(voiceSearchRepository.getHasAcceptedRationaleDialog()).thenReturn(true)
 
-        testee.registerResultsCallback(mock(), mock()) { }
+        testee.registerResultsCallback(mock(), mock(), mock()) { }
         testee.launch(mock())
 
         assertFalse(voiceSearchPermissionDialogsLauncher.rationaleDialogShown)
@@ -124,7 +164,7 @@ class MicrophonePermissionRequestTest {
     fun whenRationalDialogShownThenRationalAcceptedInvokedThenFilePixelAndLaunchPermission() {
         whenever(voiceSearchRepository.getHasPermissionDeclinedForever()).thenReturn(false)
         whenever(voiceSearchRepository.getHasAcceptedRationaleDialog()).thenReturn(false)
-        testee.registerResultsCallback(mock(), mock()) { }
+        testee.registerResultsCallback(mock(), mock(), mock()) { }
         testee.launch(mock())
 
         voiceSearchPermissionDialogsLauncher.boundOnRationaleAccepted.invoke()
@@ -138,11 +178,42 @@ class MicrophonePermissionRequestTest {
     fun whenRationalDialogShownThenRationalCancelledInvokedThenFilePixelAndLaunchPermission() {
         whenever(voiceSearchRepository.getHasPermissionDeclinedForever()).thenReturn(false)
         whenever(voiceSearchRepository.getHasAcceptedRationaleDialog()).thenReturn(false)
-        testee.registerResultsCallback(mock(), mock()) { }
+        testee.registerResultsCallback(mock(), mock(), mock()) { }
         testee.launch(mock())
 
         voiceSearchPermissionDialogsLauncher.boundOnRationaleDeclined.invoke()
 
         verify(pixel).fire(VoiceSearchPixelNames.VOICE_SEARCH_PRIVACY_DIALOG_REJECTED)
+    }
+
+    @Test
+    fun whenRationalDialogShownThenRationalCancelledThenShowRemoveVoiceSearchDialog() {
+        whenever(voiceSearchRepository.getHasPermissionDeclinedForever()).thenReturn(false)
+        whenever(voiceSearchRepository.getHasAcceptedRationaleDialog()).thenReturn(false)
+        testee.registerResultsCallback(mock(), mock(), mock()) { }
+        testee.launch(mock())
+
+        voiceSearchPermissionDialogsLauncher.boundOnRationaleDeclined.invoke()
+
+        assertTrue(voiceSearchPermissionDialogsLauncher.removeVoiceSearchDialogShown)
+    }
+
+    @Test
+    fun whenNoMicAccessDialogAcceptedThenDisableVoiceSearch() {
+        var disableVoiceSearch = false
+        whenever(voiceSearchRepository.getHasPermissionDeclinedForever()).thenReturn(false)
+        whenever(voiceSearchRepository.getHasAcceptedRationaleDialog()).thenReturn(false)
+        testee.registerResultsCallback(mock(), mock(), mock()) {
+            disableVoiceSearch = true
+        }
+        testee.launch(mock())
+
+        voiceSearchPermissionDialogsLauncher.boundOnRationaleDeclined.invoke()
+        voiceSearchPermissionDialogsLauncher.boundRemoveVoiceSearchAccepted.invoke()
+
+        verify(voiceSearchRepository).setVoiceSearchUserEnabled(eq(false))
+
+        assertTrue(voiceSearchPermissionDialogsLauncher.removeVoiceSearchDialogShown)
+        assertTrue(disableVoiceSearch)
     }
 }

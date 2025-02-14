@@ -19,16 +19,17 @@ package com.duckduckgo.vpn.internal.feature.trackers
 import android.content.Context
 import android.content.Intent
 import com.duckduckgo.app.di.AppCoroutineScope
+import com.duckduckgo.common.utils.DispatcherProvider
 import com.duckduckgo.di.scopes.VpnScope
 import com.duckduckgo.mobile.android.vpn.service.VpnServiceCallbacks
 import com.duckduckgo.mobile.android.vpn.state.VpnStateMonitor.VpnStopReason
-import com.duckduckgo.mobile.android.vpn.store.VpnDatabase
+import com.duckduckgo.mobile.android.vpn.stats.AppTrackerBlockingStatsRepository
 import com.duckduckgo.vpn.internal.feature.InternalFeatureReceiver
 import com.squareup.anvil.annotations.ContributesMultibinding
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import timber.log.Timber
-import javax.inject.Inject
+import logcat.logcat
 
 /**
  * This receiver allows deletion of previously seen trackers.
@@ -53,8 +54,9 @@ class DeleteTrackersDebugReceiver(
 @ContributesMultibinding(VpnScope::class)
 class DeleteTrackersDebugReceiverRegister @Inject constructor(
     private val context: Context,
-    private val vpnDatabase: VpnDatabase,
+    private val appTrackerBlockingRepository: AppTrackerBlockingStatsRepository,
     @AppCoroutineScope private val appCoroutineScope: CoroutineScope,
+    private val dispatcherProvider: DispatcherProvider,
 ) : VpnServiceCallbacks {
     private val className: String
         get() = DeleteTrackersDebugReceiver::class.java.simpleName
@@ -62,20 +64,20 @@ class DeleteTrackersDebugReceiverRegister @Inject constructor(
     private var receiver: DeleteTrackersDebugReceiver? = null
 
     override fun onVpnStarted(coroutineScope: CoroutineScope) {
-        Timber.i("Debug receiver %s registered", className)
+        logcat { "Debug receiver $className registered" }
 
         receiver?.unregister()
 
         receiver = DeleteTrackersDebugReceiver(context) {
-            appCoroutineScope.launch {
-                vpnDatabase.vpnTrackerDao().deleteAllTrackers()
+            appCoroutineScope.launch(dispatcherProvider.io()) {
+                appTrackerBlockingRepository.deleteAllTrackers()
             }
         }.apply { register() }
     }
 
     override fun onVpnStopped(
         coroutineScope: CoroutineScope,
-        vpnStopReason: VpnStopReason
+        vpnStopReason: VpnStopReason,
     ) {
         receiver?.unregister()
     }

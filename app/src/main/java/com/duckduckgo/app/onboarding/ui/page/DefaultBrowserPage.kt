@@ -20,35 +20,31 @@ import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.lifecycle.ViewModelProvider
 import com.duckduckgo.anvil.annotations.InjectWith
 import com.duckduckgo.app.browser.BrowserActivity
 import com.duckduckgo.app.browser.R
 import com.duckduckgo.app.browser.defaultbrowsing.DefaultBrowserSystemSettings
-import com.duckduckgo.app.global.FragmentViewModelFactory
-import com.duckduckgo.mobile.android.ui.view.show
-import com.duckduckgo.app.statistics.VariantManager
 import com.duckduckgo.appbuildconfig.api.AppBuildConfig
+import com.duckduckgo.common.ui.view.button.DaxButton
+import com.duckduckgo.common.ui.view.show
+import com.duckduckgo.common.utils.FragmentViewModelFactory
 import com.duckduckgo.di.scopes.FragmentScope
-import kotlinx.android.synthetic.main.content_onboarding_default_browser.*
-import kotlinx.android.synthetic.main.include_default_browser_buttons.*
-import timber.log.Timber
 import javax.inject.Inject
+import timber.log.Timber
 
 @InjectWith(FragmentScope::class)
-class DefaultBrowserPage : OnboardingPageFragment() {
+class DefaultBrowserPage : OnboardingPageFragment(R.layout.content_onboarding_default_browser) {
 
     @Inject
     lateinit var viewModelFactory: FragmentViewModelFactory
-
-    @Inject
-    lateinit var variantManager: VariantManager
 
     @Inject
     lateinit var appBuildConfig: AppBuildConfig
@@ -56,19 +52,29 @@ class DefaultBrowserPage : OnboardingPageFragment() {
     private var userTriedToSetDDGAsDefault = false
     private var userSelectedExternalBrowser = false
     private var toast: Toast? = null
+
     private var defaultCard: View? = null
+    private lateinit var headerImage: ImageView
+    private lateinit var title: TextView
+    private lateinit var subtitle: TextView
+    private lateinit var primaryButton: DaxButton
+    private lateinit var secondaryButton: DaxButton
 
     private val viewModel: DefaultBrowserPageViewModel by lazy {
         ViewModelProvider(this, viewModelFactory).get(DefaultBrowserPageViewModel::class.java)
     }
 
-    override fun layoutResource(): Int = R.layout.content_onboarding_default_browser
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
+        super.onViewCreated(view, savedInstanceState)
 
-    override fun setUserVisibleHint(isVisibleToUser: Boolean) {
-        super.setUserVisibleHint(isVisibleToUser)
-        if (isVisibleToUser) {
-            viewModel.pageBecameVisible()
-        }
+        headerImage = view.findViewById(R.id.defaultBrowserImage)
+        title = view.findViewById(R.id.browserProtectionTitle)
+        subtitle = view.findViewById(R.id.browserProtectionSubtitle)
+        primaryButton = view.findViewById(R.id.launchSettingsButton)
+        secondaryButton = view.findViewById(R.id.continueButton)
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -132,27 +138,27 @@ class DefaultBrowserPage : OnboardingPageFragment() {
     }
 
     private fun setUiForDialog() {
-        defaultBrowserImage.setImageResource(R.drawable.set_as_default_browser_illustration_dialog)
-        browserProtectionSubtitle.setText(R.string.defaultBrowserDescriptionNoDefault)
-        browserProtectionTitle.setText(R.string.onboardingDefaultBrowserTitle)
-        launchSettingsButton.setText(R.string.defaultBrowserLetsDoIt)
+        headerImage.setImageResource(R.drawable.set_as_default_browser_illustration_dialog)
+        subtitle.setText(R.string.defaultBrowserDescriptionNoDefault)
+        title.setText(R.string.onboardingDefaultBrowserTitle)
+        primaryButton.setText(R.string.setAsDefaultBrowser)
         setButtonsBehaviour()
     }
 
     private fun setUiForSettings() {
-        defaultBrowserImage.setImageResource(R.drawable.set_as_default_browser_illustration_settings)
-        browserProtectionSubtitle.setText(R.string.onboardingDefaultBrowserDescription)
-        browserProtectionTitle.setText(R.string.onboardingDefaultBrowserTitle)
-        launchSettingsButton.setText(R.string.defaultBrowserLetsDoIt)
+        headerImage.setImageResource(R.drawable.set_as_default_browser_illustration_settings)
+        subtitle.setText(R.string.onboardingDefaultBrowserDescription)
+        title.setText(R.string.onboardingDefaultBrowserTitle)
+        primaryButton.setText(R.string.setAsDefaultBrowser)
         setButtonsBehaviour()
     }
 
     private fun setButtonsBehaviour() {
-        launchSettingsButton.setOnClickListener {
+        primaryButton.setOnClickListener {
             viewModel.onDefaultBrowserClicked()
         }
-        continueButton.setOnClickListener {
-            viewModel.onContinueToBrowser(userTriedToSetDDGAsDefault)
+        secondaryButton.setOnClickListener {
+            viewModel.onContinueToBrowser()
         }
     }
 
@@ -185,23 +191,20 @@ class DefaultBrowserPage : OnboardingPageFragment() {
         startActivityForResult(intent, DEFAULT_BROWSER_REQUEST_CODE_DIALOG)
     }
 
-    @Suppress("NewApi") // we use appBuildConfig
     private fun onLaunchDefaultBrowserSettingsClicked() {
         userTriedToSetDDGAsDefault = true
-        if (appBuildConfig.sdkInt >= Build.VERSION_CODES.N) {
-            val intent = DefaultBrowserSystemSettings.intent()
-            try {
-                startActivityForResult(intent, DEFAULT_BROWSER_REQUEST_CODE_SETTINGS)
-            } catch (e: ActivityNotFoundException) {
-                Timber.w(e, getString(R.string.cannotLaunchDefaultAppSettings))
-            }
+        val intent = DefaultBrowserSystemSettings.intent()
+        try {
+            startActivityForResult(intent, DEFAULT_BROWSER_REQUEST_CODE_SETTINGS)
+        } catch (e: ActivityNotFoundException) {
+            Timber.w(e, getString(R.string.cannotLaunchDefaultAppSettings))
         }
     }
 
     override fun onActivityResult(
         requestCode: Int,
         resultCode: Int,
-        data: Intent?
+        data: Intent?,
     ) {
         when (requestCode) {
             DEFAULT_BROWSER_REQUEST_CODE_SETTINGS -> {

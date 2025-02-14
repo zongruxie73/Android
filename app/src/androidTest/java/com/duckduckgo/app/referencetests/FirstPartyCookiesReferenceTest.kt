@@ -16,19 +16,17 @@
 
 package com.duckduckgo.app.referencetests
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.os.Build
 import androidx.core.net.toUri
 import androidx.test.platform.app.InstrumentationRegistry
-import com.duckduckgo.app.FileUtilities
+import com.duckduckgo.app.fire.FireproofRepository
 import com.duckduckgo.app.fire.WebViewDatabaseLocator
-import com.duckduckgo.app.global.DefaultDispatcherProvider
-import com.duckduckgo.app.global.exception.RootExceptionFinder
 import com.duckduckgo.app.privacy.db.UserAllowListRepository
-import com.duckduckgo.app.statistics.pixels.ExceptionPixel
-import com.duckduckgo.app.statistics.pixels.Pixel
-import com.duckduckgo.cookies.api.CookieException
+import com.duckduckgo.common.test.FileUtilities
+import com.duckduckgo.common.utils.DefaultDispatcherProvider
 import com.duckduckgo.cookies.impl.DefaultCookieManagerProvider
 import com.duckduckgo.cookies.impl.SQLCookieRemover
 import com.duckduckgo.cookies.impl.features.CookiesFeature
@@ -38,16 +36,21 @@ import com.duckduckgo.cookies.impl.features.firstparty.RealFirstPartyCookiesModi
 import com.duckduckgo.cookies.store.CookieExceptionEntity
 import com.duckduckgo.cookies.store.CookiesRepository
 import com.duckduckgo.cookies.store.FirstPartyCookiePolicyEntity
-import com.duckduckgo.cookies.store.toCookieException
+import com.duckduckgo.cookies.store.toFeatureException
+import com.duckduckgo.feature.toggles.api.FeatureExceptions.FeatureException
 import com.duckduckgo.privacy.config.api.UnprotectedTemporary
 import com.duckduckgo.privacy.config.impl.models.JsonPrivacyConfig
 import com.duckduckgo.privacy.config.impl.network.JSONObjectAdapter
-import com.duckduckgo.privacy.config.store.toUnprotectedTemporaryException
-import org.mockito.kotlin.mock
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
+import java.util.Locale
+import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import org.junit.After
@@ -56,26 +59,20 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
+import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
-import org.threeten.bp.Instant
-import org.threeten.bp.ZoneOffset
-import org.threeten.bp.temporal.ChronoUnit
-import java.util.Locale
-import java.util.concurrent.CopyOnWriteArrayList
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
-@ExperimentalCoroutinesApi
 @RunWith(Parameterized::class)
+@SuppressLint("NoHardcodedCoroutineDispatcher")
 class FirstPartyCookiesReferenceTest(private val testCase: TestCase) {
 
     private val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
     private val cookieManagerProvider = DefaultCookieManagerProvider()
-    private val cookieManager = cookieManagerProvider.get()
-    private val mockPixel = mock<Pixel>()
+    private val cookieManager = cookieManagerProvider.get()!!
     private val cookiesRepository = mock<CookiesRepository>()
     private val unprotectedTemporary = mock<UnprotectedTemporary>()
     private val userAllowListRepository = mock<UserAllowListRepository>()
+    private val fireproofRepository = mock<FireproofRepository>()
     private val webViewDatabaseLocator = WebViewDatabaseLocator(context)
     private lateinit var cookieModifier: FirstPartyCookiesModifier
 
@@ -90,8 +87,8 @@ class FirstPartyCookiesReferenceTest(private val testCase: TestCase) {
             val referenceTest = adapter.fromJson(
                 FileUtilities.loadText(
                     FirstPartyCookiesReferenceTest::class.java.classLoader!!,
-                    "reference_tests/firstpartycookies/tests.json"
-                )
+                    "reference_tests/firstpartycookies/tests.json",
+                ),
             )
             return referenceTest?.expireFirstPartyTrackingCookies?.tests?.filterNot { it.exceptPlatforms.contains("android-browser") } ?: emptyList()
         }
@@ -106,8 +103,9 @@ class FirstPartyCookiesReferenceTest(private val testCase: TestCase) {
             unprotectedTemporary,
             userAllowListRepository,
             webViewDatabaseLocator,
-            ExceptionPixel(mockPixel, RootExceptionFinder()),
-            DefaultDispatcherProvider()
+            mock(),
+            fireproofRepository,
+            DefaultDispatcherProvider(),
         )
         val host = testCase.siteURL.toUri().host
 
@@ -133,7 +131,6 @@ class FirstPartyCookiesReferenceTest(private val testCase: TestCase) {
         }
 
         withContext(Dispatchers.Main) {
-
             val expectedValue: Long = (
                 (
                     Instant.now()
@@ -152,7 +149,10 @@ class FirstPartyCookiesReferenceTest(private val testCase: TestCase) {
                         SQLCookieRemover.COOKIES_TABLE_NAME,
                         arrayOf("expires_utc"),
                         "host_key ='$host'",
-                        null, null, null, null
+                        null,
+                        null,
+                        null,
+                        null,
                     ).use { cursor ->
                         if (testCase.expectCookieSet) {
                             assertTrue(cursor.count == 1)
@@ -192,33 +192,32 @@ class FirstPartyCookiesReferenceTest(private val testCase: TestCase) {
     }
 
     private fun mockPrivacyConfig() {
-        val cookieExceptions = mutableListOf<CookieException>()
+        val cookieExceptions = mutableListOf<FeatureException>()
         val jsonAdapter: JsonAdapter<JsonPrivacyConfig> = moshi.adapter(JsonPrivacyConfig::class.java)
         val config: JsonPrivacyConfig? = jsonAdapter.fromJson(
             FileUtilities.loadText(
                 javaClass.classLoader!!,
-                "reference_tests/firstpartycookies/config_reference.json"
-            )
+                "reference_tests/firstpartycookies/config_reference.json",
+            ),
         )
         val cookieAdapter: JsonAdapter<CookiesFeature> = moshi.adapter(CookiesFeature::class.java)
         val cookieFeature: CookiesFeature? = cookieAdapter.fromJson(config?.features?.get("cookie").toString())
 
         cookieFeature?.exceptions?.map {
-            cookieExceptions.add(CookieExceptionEntity(it.domain, it.reason).toCookieException())
+            cookieExceptions.add(CookieExceptionEntity(it.domain, it.reason.orEmpty()).toFeatureException())
         }
 
         val policy = FirstPartyCookiePolicyEntity(
             threshold = cookieFeature!!.settings.firstPartyCookiePolicy.threshold,
-            maxAge = cookieFeature.settings.firstPartyCookiePolicy.maxAge
+            maxAge = cookieFeature.settings.firstPartyCookiePolicy.maxAge,
         )
 
-        val unprotectedTemporaryExceptions = config?.unprotectedTemporary?.map {
-            it.toUnprotectedTemporaryException()
-        }
+        val unprotectedTemporaryExceptions = config?.unprotectedTemporary
 
         whenever(cookiesRepository.exceptions).thenReturn(CopyOnWriteArrayList(cookieExceptions))
         whenever(cookiesRepository.firstPartyCookiePolicy).thenReturn(policy)
         whenever(unprotectedTemporary.unprotectedTemporaryExceptions).thenReturn(unprotectedTemporaryExceptions)
+        whenever(fireproofRepository.fireproofWebsites()).thenReturn(emptyList())
     }
 
     data class TestCase(
@@ -227,16 +226,16 @@ class FirstPartyCookiesReferenceTest(private val testCase: TestCase) {
         val setDocumentCookie: String,
         val expectCookieSet: Boolean,
         val expectExpiryToBe: Int,
-        val exceptPlatforms: List<String>
+        val exceptPlatforms: List<String>,
     )
 
     data class ExpireFirstPartyCookiesTest(
         val name: String,
         val desc: String,
-        val tests: List<TestCase>
+        val tests: List<TestCase>,
     )
 
     data class ReferenceTest(
-        val expireFirstPartyTrackingCookies: ExpireFirstPartyCookiesTest
+        val expireFirstPartyTrackingCookies: ExpireFirstPartyCookiesTest,
     )
 }

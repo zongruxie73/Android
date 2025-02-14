@@ -16,26 +16,26 @@
 
 package com.duckduckgo.app.email
 
+import android.annotation.SuppressLint
 import android.webkit.WebView
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.duckduckgo.app.CoroutineTestRule
-import com.duckduckgo.app.browser.DuckDuckGoUrlDetector
-import com.duckduckgo.feature.toggles.api.FeatureToggle
-import com.duckduckgo.privacy.config.api.Autofill
-import com.duckduckgo.privacy.config.api.PrivacyFeatureName.AutofillFeatureName
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.never
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.duckduckgo.app.browser.DuckDuckGoUrlDetectorImpl
+import com.duckduckgo.autofill.api.Autofill
+import com.duckduckgo.autofill.api.AutofillFeature
+import com.duckduckgo.autofill.api.email.EmailManager
+import com.duckduckgo.common.test.CoroutineTestRule
+import com.duckduckgo.feature.toggles.api.Toggle
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
-@ExperimentalCoroutinesApi
 @RunWith(AndroidJUnit4::class)
 class EmailJavascriptInterfaceTest {
 
@@ -44,23 +44,26 @@ class EmailJavascriptInterfaceTest {
 
     private val mockEmailManager: EmailManager = mock()
     private val mockWebView: WebView = mock()
-    private val mockFeatureToggle: FeatureToggle = mock()
+    private lateinit var autofillFeature: AutofillFeature
     private val mockAutofill: Autofill = mock()
     lateinit var testee: EmailJavascriptInterface
     private var counter = 0
 
+    @SuppressLint("DenyListedApi")
     @Before
     fun setup() {
+        autofillFeature = com.duckduckgo.autofill.api.FakeAutofillFeature.create()
+
         testee = EmailJavascriptInterface(
             mockEmailManager,
             mockWebView,
-            DuckDuckGoUrlDetector(),
+            DuckDuckGoUrlDetectorImpl(),
             coroutineRule.testDispatcherProvider,
-            mockFeatureToggle,
-            mockAutofill
+            autofillFeature,
+            mockAutofill,
         ) { counter++ }
 
-        whenever(mockFeatureToggle.isFeatureEnabled(AutofillFeatureName.value)).thenReturn(true)
+        autofillFeature.self().setRawStoredState(Toggle.State(enable = true))
         whenever(mockAutofill.isAnException(any())).thenReturn(false)
     }
 
@@ -127,10 +130,11 @@ class EmailJavascriptInterfaceTest {
         assertEquals(1, counter)
     }
 
+    @SuppressLint("DenyListedApi")
     @Test
     fun whenShowTooltipAndFeatureDisabledThenLambdaNotCalled() {
         whenever(mockWebView.url).thenReturn(NON_EMAIL_URL)
-        whenever(mockFeatureToggle.isFeatureEnabled(AutofillFeatureName.value)).thenReturn(false)
+        autofillFeature.self().setRawStoredState(Toggle.State(enable = false))
 
         testee.showTooltip()
 

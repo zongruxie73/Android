@@ -14,6 +14,8 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
+<!-- smartling.entity_escaping = false -->
+<!-- smartling.instruction_attributes = instruction -->
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="atp_name">Sovellusten seurantasuojaus</string>
     <string name="refresh">Päivitä</string>
@@ -21,29 +23,29 @@
     <!-- Debug Screens -->
     <string name="atp_DiagnosticsMenuLabel">Diagnostiikka</string>
     <string name="atp_DataMenuLabel">Tietotilastot</string>
-    <string name="atp_MeteredConnection">"Mitattu: %1$s"</string>
-    <string name="atp_ConnectionStatus">"VPN yhdistetty: %1$s"</string>
-    <string name="atp_NetworkAvailable">"Yhdistetty internetiin: %1$s"</string>
-    <string name="atp_DnsServers">"Verkon aktiivinen DNS: %1$s"</string>
+    <string name="atp_MeteredConnection" instruction="Placeholder is true or false">"Mitattu: %1$s"</string>
+    <string name="atp_ConnectionStatus" instruction="Placeholder is true or false">"VPN yhdistetty: %1$s"</string>
+    <string name="atp_NetworkAvailable" instruction="Placeholder is true or false">"Yhdistetty internetiin: %1$s"</string>
+    <string name="atp_DnsServers" instruction="Placeholder is a list of dns addresses">"Verkon aktiivinen DNS: %1$s"</string>
     <string name="atp_AppExitsReasonsTitle">Sovelluksesta poistumisen syyt</string>
     <string name="atp_AppRestartsTitle">Sovellus käynnistyy uudelleen</string>
 
     <!-- Diagnostics -->
-    <string name="vpnTimeRunning">Käyntiaika: %1$s</string>
-    <string name="vpnTrackerCompaniesBlockedToday">Tänään estetyt seurantayritykset: %1$d</string>
-    <string name="vpnTrackerCompaniesBlockedThisWeek">Tällä viikolla estetyt seurantayritykset: %1$d</string>
+    <string name="vpnTimeRunning" instruction="Placeholder is the time expressed as a String that the vpn has been running">Käyntiaika: %1$s</string>
+    <string name="vpnTrackerCompaniesBlockedToday" instruction="Placeholder is a number">Tänään estetyt seurantayritykset: %1$d</string>
+    <string name="vpnTrackerCompaniesBlockedThisWeek" instruction="Placeholder is a number">Tällä viikolla estetyt seurantayritykset: %1$d</string>
     <string name="vpnTrackerCompaniesNone">"Yhtään seurantayritystä ei ole vielä estetty"</string>
-    <string name="vpnTrackersBlockedToday">Tänään estetyt seurannat: %1$d</string>
-    <string name="vpnTrackersBlockedThisWeek">Tällä viikolla estetyt seurannat: %1$d</string>
+    <string name="vpnTrackersBlockedToday" instruction="Placeholder is a number">Tänään estetyt seurannat: %1$d</string>
+    <string name="vpnTrackersBlockedThisWeek" instruction="Placeholder is a number">Tällä viikolla estetyt seurannat: %1$d</string>
     <string name="vpnTrackersNone">"Ei vielä estettyjä seurantoja"</string>
     <string name="vpnNotRunYet">"VPN:ää ei ole vielä ajettu"</string>
-    <string name="vpnDataTransferred">"%1$1s\n%2$2s pakettia"</string>
+    <string name="vpnDataTransferred" instruction="%1$s is the size of data transferred, i.e. 340MB. %2$s is the amount of packets, i.e. 123 packets ">"%1$s\n%2$s pakettia"</string>
 
     <!-- App Tracking Protection Ongoing Notification -->
     <string name="atp_ReportIssue">Ongelmia sovelluksen kanssa?</string>
     <string name="atp_OnInitialNotification">"App Tracking Protection on käytössä ja estää seurantayritykset kaikissa sovelluksissasi"</string>
     <string name="atp_OnNoTrackersNotificationHeader">"Skannataan seurantatoiminnan varalta... piip... puup"</string>
-    <plurals name="atp_OnNotification" tools:ignore="ImpliedQuantity">
+    <plurals name="atp_OnNotification">
         <item quantity="one"><![CDATA[ Seurantayrityksiä estetty <b>%1$d sovelluksessa</b> (viimeisen tunnin aikana).]]></item>
         <item quantity="other"><![CDATA[ Seurantayrityksiä estetty <b>kaikkiaan %1$d sovelluksessa</b> (viimeisen tunnin aikana).]]></item>
     </plurals>
@@ -51,50 +53,50 @@
     <string name="atp_RevokedNotification">Laitteessasi oleva VPN-sovellus poisti App Tracking Protectionin käytöstä. Ota uudelleen käyttöön napauttamalla.</string>
 
     <!-- App Tracking Protection Daily Notification -->
-    <string name="atp_DailyTrackersNotificationOneTrackingZeroApps"><![CDATA[ App Tracking Protection esti <b>%1$d seurantayrityksen</b> (viimeisen päivän aikana).]]></string>
-    <string name="atp_DailyTrackersNotificationOneTrackingOneApps"><![CDATA[ App Tracking Protection esti <b>%1$d seurantayrityksen 1 sovelluksessa, %2$s</b> (viimeisen päivän aikana).]]></string>
-    <string name="atp_DailyTrackersNotificationOtherTrackingZeroApps"><![CDATA[ App Tracking Protection esti <b>%1$d seurantayritystä</b> (viimeisen päivän aikana).]]></string>
-    <string name="atp_DailyTrackersNotificationOtherTrackingOtherApps"><![CDATA[ App Tracking Protection esti <b>%1$d seurantayritystä %2$d sovelluksessa, mukaan lukien %3$s</b> (viimeisen päivän aikana).]]></string>
+    <string name="atp_DailyTrackersNotificationOneTrackingZeroApps" instruction="Placeholder is a number"><![CDATA[ App Tracking Protection esti <b>%1$d seurantayrityksen</b> (viimeisen päivän aikana).]]></string>
+    <string name="atp_DailyTrackersNotificationOneTrackingOneApps" instruction="%1$d is the number of tracking attempts and %2$s is the name of the app where it happened"><![CDATA[ App Tracking Protection esti <b>%1$d seurantayrityksen 1 sovelluksessa, %2$s</b> (viimeisen päivän aikana).]]></string>
+    <string name="atp_DailyTrackersNotificationOtherTrackingZeroApps" instruction="Placeholder is a number"><![CDATA[ App Tracking Protection esti <b>%1$d seurantayritystä</b> (viimeisen päivän aikana).]]></string>
+    <string name="atp_DailyTrackersNotificationOtherTrackingOtherApps" instruction="%1$d is the number of tracking attempts, %2$d is the number of apps where the tracking took place, %3$s is the name of one of the apps where it happened"><![CDATA[ App Tracking Protection esti <b>%1$d seurantayritystä %2$d sovelluksessa, mukaan lukien %3$s</b> (viimeisen päivän aikana).]]></string>
 
-    <plurals name="atp_DailyTopCompanyNotification" tools:ignore="ImpliedQuantity">
+    <plurals name="atp_DailyTopCompanyNotification">
         <item quantity="one"><![CDATA[%1$s yritti seurata sinua <b>%2$d sovelluksessa</b> (viimeisen päivän aikana). <b>Näytä lisää</b>]]></item>
         <item quantity="other"><![CDATA[%1$s yritti seurata sinua <b>kaikkiaan %2$d sovelluksessa</b> (viimeisen päivän aikana). <b>Näytä lisää</b>]]></item>
     </plurals>
 
-     <plurals name="atp_DailyCompanyBlockedNotification" tools:ignore="ImpliedQuantity">
+    <plurals name="atp_DailyCompanyBlockedNotification">
         <item quantity="one"><![CDATA[App Tracking Protection esti eniten seurantayrityksiä kohteessa <b>%1$s</b> (viimeisen päivän aikana).]]></item>
         <item quantity="other"><![CDATA[App Tracking Protection esti eniten seurantayrityksiä kohteissa <b>%1$s</b> ja <b>%2$s</b> (viimeisen päivän aikana).]]></item>
     </plurals>
 
-    <string name="atp_DailyLastCompanyBlockedNotificationOneTimeZeroOtherApps"><![CDATA[App Tracking Protection esti <b>%1$s %2$d kerran kohteessa %3$s</b> (viimeisen päivän aikana).]]></string>
-    <string name="atp_DailyLastCompanyBlockedNotificationOneTimeOneOtherApp"><![CDATA[App Tracking Protection esti <b>%1$s %2$d kerran kohteessa %3$s ja 1 muussa sovelluksessa</b> (viimeisen päivän aikana).]]></string>
-    <string name="atp_DailyLastCompanyBlockedNotificationOneTimeMoreOtherApps"><![CDATA[App Tracking Protection esti <b>%1$s %2$d kerran kohteessa %3$s ja %4$d muussa sovelluksessa</b> (viimeisen päivän aikana).]]></string>
+    <string name="atp_DailyLastCompanyBlockedNotificationOneTimeZeroOtherApps" instruction="%1$s is name of the tracking company, i.e. Facebook. %2$d is the number of times we blocked their tracking attempts. %3$s is the name of the app where it happened"><![CDATA[App Tracking Protection esti <b>%1$s %2$d kerran kohteessa %3$s</b> (viimeisen päivän aikana).]]></string>
+    <string name="atp_DailyLastCompanyBlockedNotificationOneTimeOneOtherApp" instruction="%1$s is name of the tracking company, i.e. Facebook. %2$d is the number of times we blocked their tracking attempts. %3$s is the name of the app where it happened"><![CDATA[App Tracking Protection esti <b>%1$s %2$d kerran kohteessa %3$s ja 1 muussa sovelluksessa</b> (viimeisen päivän aikana).]]></string>
+    <string name="atp_DailyLastCompanyBlockedNotificationOneTimeMoreOtherApps" instruction="%1$s is name of the tracking company, i.e. Facebook. %2$d is the number of times we blocked their tracking attempts. %3$s is the name of the app where it happened, %4$d is the number of apps this the tracking also happened"><![CDATA[App Tracking Protection esti <b>%1$s %2$d kerran kohteessa %3$s ja %4$d muussa sovelluksessa</b> (viimeisen päivän aikana).]]></string>
 
-    <string name="atp_DailyLastCompanyBlockedNotificationOtherTimesZeroOtherApps"><![CDATA[App Tracking Protection esti <b>%1$s %2$d kertaa kohteessa %3$s</b> (viimeisen päivän aikana).]]></string>
-    <string name="atp_DailyLastCompanyBlockedNotificationOtherTimesOneOtherApp"><![CDATA[App Tracking Protection esti <b>%1$s %2$d kertaa kohteessa %3$s ja 1 muussa sovelluksessa</b> (viimeisen päivän aikana).]]></string>
-    <string name="atp_DailyLastCompanyBlockedNotificationOtherTimesMoreOtherApps"><![CDATA[App Tracking Protection esti <b>%1$s %2$d kertaa kohteessa %3$s ja %4$d muussa sovelluksessa</b> (viimeisen päivän aikana).]]></string>
+    <string name="atp_DailyLastCompanyBlockedNotificationOtherTimesZeroOtherApps" instruction="%1$s is name of the tracking company, i.e. Facebook. %2$d is the number of times we blocked their tracking attempts. %3$s is the name of the app where it happened"><![CDATA[App Tracking Protection esti <b>%1$s %2$d kertaa kohteessa %3$s</b> (viimeisen päivän aikana).]]></string>
+    <string name="atp_DailyLastCompanyBlockedNotificationOtherTimesOneOtherApp" instruction="%1$s is name of the tracking company, i.e. Facebook. %2$d is the number of times we blocked their tracking attempts. %3$s is the name of the app where it happened"><![CDATA[App Tracking Protection esti <b>%1$s %2$d kertaa kohteessa %3$s ja 1 muussa sovelluksessa</b> (viimeisen päivän aikana).]]></string>
+    <string name="atp_DailyLastCompanyBlockedNotificationOtherTimesMoreOtherApps" instruction="%1$s is name of the tracking company, i.e. Facebook. %2$d is the number of times we blocked their tracking attempts. %3$s is the name of the app where it happened, %4$d is the number of apps this the tracking also happened"><![CDATA[App Tracking Protection esti <b>%1$s %2$d kertaa kohteessa %3$s ja %4$d muussa sovelluksessa</b> (viimeisen päivän aikana).]]></string>
 
     <!-- App Tracking Protection Weekly Notification -->
-    <string name="atp_WeeklyCompanyTrackersBlockedNotificationOneTimeZeroOtherApps"><![CDATA[App Tracking Protection esti <b>%1$d seurantayrityksen kohteessa %2$s</b> (viime viikolla).]]></string>
-    <string name="atp_WeeklyCompanyTrackersBlockedNotificationOneTimeOneOtherApp"><![CDATA[App Tracking Protection esti <b>%1$d seurantayrityksen kohteessa %2$s</b> ja 1 muussa sovelluksessa (viime viikolla).]]></string>
-    <string name="atp_WeeklyCompanyTrackersBlockedNotificationOneTimeMoreOtherApps"><![CDATA[App Tracking Protection esti <b>%1$d seurantayrityksen kohteessa %2$s</b> ja %3$d muussa sovelluksessa (viime viikolla).]]></string>
-    <string name="atp_WeeklyCompanyTrackersBlockedNotificationOtherTimesZeroOtherApps"><![CDATA[App Tracking Protection esti <b>%1$d seurantayritystä kohteessa %2$s</b> (viime viikolla).]]></string>
-    <string name="atp_WeeklyCompanyTrackersBlockedNotificationOtherTimesOneOtherApp"><![CDATA[App Tracking Protection esti <b>%1$d seurantayritystä kohteessa %2$s</b> ja 1 muussa sovelluksessa (viime viikolla).]]></string>
-    <string name="atp_WeeklyCompanyTrackersBlockedNotificationOtherTimesMoreOtherApps"><![CDATA[App Tracking Protection esti <b>%1$d seurantayritystä %2$s</b> ja %3$d muissa sovelluksissa (viime viikolla).]]></string>
+    <string name="atp_WeeklyCompanyTrackersBlockedNotificationOneTimeZeroOtherApps" instruction="%1$d is the number of the tracking attempts, %2$s is the name of the app where it happened"><![CDATA[App Tracking Protection esti <b>%1$d seurantayrityksen kohteessa %2$s</b> (viime viikolla).]]></string>
+    <string name="atp_WeeklyCompanyTrackersBlockedNotificationOneTimeOneOtherApp" instruction="%1$d is the number of the tracking attempts, %2$s is the name of the app where it happened"><![CDATA[App Tracking Protection esti <b>%1$d seurantayrityksen kohteessa %2$s</b> ja 1 muussa sovelluksessa (viime viikolla).]]></string>
+    <string name="atp_WeeklyCompanyTrackersBlockedNotificationOneTimeMoreOtherApps" instruction="%1$d is the number of the tracking attempts, %2$s is the name of the app where it happened, %3$d is the number of other apps where this also happened"><![CDATA[App Tracking Protection esti <b>%1$d seurantayrityksen kohteessa %2$s</b> ja %3$d muussa sovelluksessa (viime viikolla).]]></string>
+    <string name="atp_WeeklyCompanyTrackersBlockedNotificationOtherTimesZeroOtherApps" instruction="%1$d is the number of the tracking attempts, %2$s is the name of the app where it happened"><![CDATA[App Tracking Protection esti <b>%1$d seurantayritystä kohteessa %2$s</b> (viime viikolla).]]></string>
+    <string name="atp_WeeklyCompanyTrackersBlockedNotificationOtherTimesOneOtherApp" instruction="%1$d is the number of the tracking attempts, %2$s is the name of the app where it happened"><![CDATA[App Tracking Protection esti <b>%1$d seurantayritystä kohteessa %2$s</b> ja 1 muussa sovelluksessa (viime viikolla).]]></string>
+    <string name="atp_WeeklyCompanyTrackersBlockedNotificationOtherTimesMoreOtherApps" instruction="%1$d is the number of the tracking attempts, %2$s is the name of the app where it happened, %3$d is the number of other apps where this also happened"><![CDATA[App Tracking Protection esti <b>%1$d seurantayritystä %2$s</b> ja %3$d muissa sovelluksissa (viime viikolla).]]></string>
 
-     <plurals name="atp_WeeklyCompanyTeaserNotification" tools:ignore="ImpliedQuantity">
+    <plurals name="atp_WeeklyCompanyTeaserNotification">
         <item quantity="one"><![CDATA[App Tracking Protection esti yrityksen <b>%1$s %2$d sovelluksessa, mukaan lukien %3$s</b> (viime viikolla).]]></item>
         <item quantity="other"><![CDATA[App Tracking Protection esti yrityksen <b>%1$s kaikkiaan %2$d sovelluksessa, mukaan lukien %3$s</b> (viime viikolla).]]></item>
     </plurals>
 
     <string name="atp_EnableCTA">Ota App Tracking Protection käyttöön</string>
 
-    <string name="atp_DailyLastCompanyBlockedHomeTabOneTimeZeroOtherApps"><![CDATA[App Tracking Protection esti <b>%1$d seurantayrityksen kohteessa %2$s</b> (viimeisen tunnin aikana).]]></string>
-    <string name="atp_DailyLastCompanyBlockedHomeTabOneTimeOneOtherApp"><![CDATA[App Tracking Protection esti <b>%1$d seurantayrityksen kohteessa %2$s</b> ja 1 muussa sovelluksessa (viimeisen tunnin aikana).]]></string>
-    <string name="atp_DailyLastCompanyBlockedHomeTabOneTimeMoreOtherApps"><![CDATA[App Tracking Protection esti <b>%1$d seurantayrityksen kohteessa %2$s</b> ja %3$d muussa sovelluksessa (viimeisen tunnin aikana).]]></string>
-    <string name="atp_DailyLastCompanyBlockedHomeTabOtherTimesZeroOtherApps"><![CDATA[App Tracking Protection esti <b>%1$d seurantayritystä kohteessa %2$s</b> (viimeisen tunnin aikana).]]></string>
-    <string name="atp_DailyLastCompanyBlockedHomeTabOtherTimesOneOtherApp"><![CDATA[App Tracking Protection esti <b>%1$d seurantayritystä kohteessa %2$s</b> ja 1 muussa sovelluksessa (viimeisen tunnin aikana).]]></string>
-    <string name="atp_DailyLastCompanyBlockedHomeTabOtherTimesMoreOtherApps"><![CDATA[App Tracking Protection esti <b>%1$d seurantayritystä kohteessa %2$s</b> ja %3$d muussa sovelluksessa (viimeisen tunnin aikana).]]></string>
+    <string name="atp_DailyLastCompanyBlockedHomeTabOneTimeZeroOtherApps" instruction="%1$d is the number of tracking attempts, %2$s is the name of the app where it happened"><![CDATA[App Tracking Protection esti <b>%1$d seurantayrityksen kohteessa %2$s</b> (viimeisen tunnin aikana).]]></string>
+    <string name="atp_DailyLastCompanyBlockedHomeTabOneTimeOneOtherApp" instruction="%1$d is the number of tracking attempts, %2$s is the name of an app where it happened"><![CDATA[App Tracking Protection esti <b>%1$d seurantayrityksen kohteessa %2$s</b> ja 1 muussa sovelluksessa (viimeisen tunnin aikana).]]></string>
+    <string name="atp_DailyLastCompanyBlockedHomeTabOneTimeMoreOtherApps" instruction="%1$d is the number of tracking attempts, %2$s is the name of an app where it happened, %3$d is the number of other apps where it happened"><![CDATA[App Tracking Protection esti <b>%1$d seurantayrityksen kohteessa %2$s</b> ja %3$d muussa sovelluksessa (viimeisen tunnin aikana).]]></string>
+    <string name="atp_DailyLastCompanyBlockedHomeTabOtherTimesZeroOtherApps" instruction="%1$d is the number of tracking attempts, %2$s is the name of the app where it happened"><![CDATA[App Tracking Protection esti <b>%1$d seurantayritystä kohteessa %2$s</b> (viimeisen tunnin aikana).]]></string>
+    <string name="atp_DailyLastCompanyBlockedHomeTabOtherTimesOneOtherApp" instruction="%1$d is the number of tracking attempts, %2$s is the name of an app where it happened"><![CDATA[App Tracking Protection esti <b>%1$d seurantayritystä kohteessa %2$s</b> ja 1 muussa sovelluksessa (viimeisen tunnin aikana).]]></string>
+    <string name="atp_DailyLastCompanyBlockedHomeTabOtherTimesMoreOtherApps" instruction="%1$d is the number of tracking attempts, %2$s is the name of an app where it happened, %3$d is the number of other apps where it happened"><![CDATA[App Tracking Protection esti <b>%1$d seurantayritystä kohteessa %2$s</b> ja %3$d muussa sovelluksessa (viimeisen tunnin aikana).]]></string>
 
     <!-- App Tracking Protection Privacy Report -->
     <string name="atp_PrivacyReportEnabledTooltip">App Tracking Protection on käytössä ja estää seurantayritykset koko laitteellasi</string>
@@ -102,18 +104,18 @@
     <!-- App Tracking Protection Onboarding -->
     <string name="atp_OnboardingLogoDescription">Ota App Tracking Protection käyttöön</string>
     <string name="atp_OnboardingLastPageOneTitle">Yksi helppo askel kohti parempaa sovellusten tietosuojaa!</string>
-    <string name="atp_OnboardingLatsPageOneSubtitle">Havaitsimme, että <b>yli 96\u0025 suosituista ilmaisista sovelluksista</b> antaa muiden yritysten seurata henkilökohtaisia tietojasi, myös unen aikana.\n\nKatso, mitkä sovellukset <b> antavat muiden yritysten seurata sinua</b>, ja ota ohjat omiin käsiisi!</string>
+    <string name="atp_OnboardingLatsPageOneSubtitle" formatted="false">Havaitsimme, että <b>yli 96 % suosituista ilmaisista sovelluksista</b> antaa muiden yritysten seurata henkilökohtaisia tietojasi, myös unen aikana.\n\nKatso, mitkä sovellukset <b> antavat muiden yritysten seurata sinua</b>, ja ota ohjat omiin käsiisi!</string>
     <string name="atp_OnboardingLastPageTwoTitle">Kuinka se toimii?</string>
     <string name="atp_OnboardingLastPageTwoSubTitle">App Tracking Protection <b>havaitsee ja estää muiden yritysten seurantalaitteet</b>, esimerkiksi kun Facebook yrittää seurata sinua terveyssovelluksessa.\n\n<b>Se on ilmainen</b>, ja voit käyttää sovelluksiasi tavalliseen tapaan. Se toimii taustalla ja auttaa <b>suojaamaan sinua yötä päivää.</b></string>
     <string name="atp_OnboardingLastPageThreeTitle">Kuka näkee tietosi?</string>
-    <string name="atp_OnboardingLastPageThreeSubTitle"><b>App Tracking Protection ei ole VPN.</b> Laitteesi kuitenkin tunnistaa sen sellaiseksi. Tämä johtuu siitä, että se käyttää toimiakseen paikallista VPN-yhteyttä.\n\nApp Tracking Protection on erilainen.<b> Se ei koskaan reititä sovellustietoja ulkoisen palvelimen kautta. </b><annotation type="learn_more_link">Lue lisää</annotation></string>
+    <string name="atp_OnboardingLastPageThreeSubTitle"><b>App Tracking Protection ei ole VPN.</b> Laitteesi kuitenkin tunnistaa sen sellaiseksi. Tämä johtuu siitä, että se käyttää toimiakseen paikallista VPN-yhteyttä.\n\nApp Tracking Protection on jotain muuta.<b> Se ei koskaan reititä sovellustietoja ulkoisen palvelimen kautta.</b>\n\n<annotation type="learn_more_link"><b>Lue lisää</b></annotation></string>
     <string name="atp_FAQCta">App Tracking Protection - Usein kysyttyä</string>
     <string name="atp_OnboardingContinue">Jatka</string>
     <string name="atp_OnboardingMaybeLater">Ehkä myöhemmin</string>
 
     <!-- App Tracking Protection Dax Onboarding -->
     <string name="atp_daxOnboardingIntroTitle">Sovellusten seurantasuojaus</string>
-    <string name="atp_daxOnboardingIntroMessage">Yli 96\u0025 suosituista ilmaisista sovelluksista antaa muiden yritysten seurata sinua myös silloin, kun et käytä puhelinta. App Tracking Protection tunnistaa ja estää nämä seurantayritykset.</string>
+    <string name="atp_daxOnboardingIntroMessage" formatted="false">Yli 96 % suosituista ilmaisista sovelluksista antaa muiden yritysten seurata sinua myös silloin, kun et käytä puhelinta. App Tracking Protection tunnistaa ja estää nämä seurantayritykset.</string>
     <string name="atp_daxOnboardingPermissionTitle">Kuinka se toimii?</string>
     <string name="atp_daxOnboardingPermissionMessage">App Tracking Protection ei ole VPN. Laitteesi kuitenkin tunnistaa sen sellaiseksi. Tämä johtuu siitä, että se käyttää toimiakseen paikallista VPN-yhteyttä.\n\n Se ei koskaan reititä sovellustietoja ulkoisen palvelimen kautta. <annotation type="learn_more_link">Lue Lisää</annotation></string>
 
@@ -131,27 +133,17 @@
     <!-- Exclusion List -->
     <string name="atp_ExclusionListActivityTitle">Kaikki sovellukset</string>
     <string name="atp_ExcludedAppsFeature">App Tracking Protection havaitsee ja estää muiden yritysten seurantalaitteet, esimerkiksi kun Facebook yrittää seurata sinua terveyssovelluksessa. Yritykset voivat silti seurata sinua omistamissaan sovelluksissa.\n\nJos jokin sovellus ei toimi odotetulla tavalla, yritä poistaa kyseisen sovelluksen suojaus käytöstä.</string>
-    <string name="atp_ExcludedAppsEnabledLabel">Beetaversion aikana DuckDuckGo voi poistaa suojauksen käytöstä joistakin sovelluksista ratkaistakseen tunnettuja sisällön latausongelmia. Mukautetut asetukset eivät muutu, ellet palauta oletusasetuksia.</string>
+    <string name="atp_ExcludedAppsEnabledLabel">DuckDuckGo voi poistaa suojauksen käytöstä joistakin sovelluksista ratkaistakseen tunnettuja sisällön latausongelmia. Mukautetut asetukset eivät muutu, ellet palauta oletusasetuksia.</string>
     <string name="atp_ExcludedAppsDisabledLabel"><b>App Tracking Protection on poistettu käytöstä</b> Aiheuttiko App Tracking Protection ongelmia sovelluksissasi <annotation type="report_issues_link">Ilmoita ongelmista</annotation></string>
     <string name="atp_ExcludedAppsReport">Ilmoita ongelmasta toisessa sovelluksessa</string>
-    <string name="atp_ExcludedReasonLoadsWebsites">Lataa verkkosivustoja</string>
-    <string name="atp_ExcludedReasonKnownIssues">Tunnetut ongelmat</string>
     <string name="atp_ExcludedReasonManuallyDisabled">Poistettu käytöstä manuaalisesti</string>
     <string name="atp_ExcludedReasonManuallyEnabled">Otettu käyttöön manuaalisesti</string>
     <string name="atp_ExcludeAppsManuallyCTACancel">Peruuta</string>
-    <string name="atp_ExcludeAppsManuallyCTAEnable">Ota käyttöön</string>
     <string name="atp_ExcludeAppsManuallyCTARestore">Palauta</string>
-    <string name="atp_ExcludeAppsManuallyEnableAppName">Ota suojaus käyttöön manuaalisesti sovellukselle %1$s?</string>
-    <string name="atp_ExcludeAppsManuallyEnableAppLabel">Tässä sovelluksessa tiedetään olevan ongelmia, kun seurantayritykset epäonnistuvat.</string>
-    <string name="atp_ExcludeAppsManuallyEnableLoadWebsitesAppLabel">Sivuston sisältö tässä sovelluksessa ei ehkä näy oikein, kun suojaus on käytössä.</string>
     <string name="atp_ExcludeAppsManuallyEnableFooter">Suojauksen ottaminen käyttöön lähettää sovelluksen nimen DuckDuckGolle.</string>
-    <string name="atp_ExcludeAppsManuallyDisableAppName">Yksityisyyden suoja poistettu käytöstä</string>
-    <string name="atp_ExcludeAppsManuallyDisableAppLabel">Jos poistit suojauksen käytöstä ongelman ratkaisemiseksi, tarkista, että sovellus toimii, ennen kuin ilmoitat ongelmasta DuckDuckGolle.</string>
     <string name="atp_ExcludeAppsManuallyDisableAnswerOne">Se lakkasi toimimasta odotetusti</string>
     <string name="atp_ExcludeAppsManuallyDisableAnswerTwo">Seuranta ei haittaa minua tässä sovelluksessa</string>
     <string name="atp_ExcludeAppsManuallyDisableAnswerThree">Muu syy</string>
-    <string name="atp_ExcludeAppsManuallyCTAReport">Ilmoita</string>
-    <string name="atp_ExcludeAppsManuallyCTASkip">Ohita</string>
     <string name="atp_ExcludeAppsManuallyMenuRestore">Palauta oletuksena suojatut sovellukset</string>
     <string name="atp_ExcludeAppsManuallyMenuReport">Ilmoita ongelmasta sovelluksessa</string>
     <string name="atp_ExcludeAppsRestoreDefaultsTitle">Palauta oletussuojaus?</string>
@@ -162,15 +154,15 @@
     <!--  Breakage report app list  -->
     <string name="atp_ReportBreakageAppListActivityTitle">Ilmoita ongelmasta</string>
     <string name="atp_ReportBreakageAppFeature"><b>Valitse sovellus, jossa on ongelma</b>. Palautteesi auttaa meitä kehittymään!\n\nHaluatko antaa yleistä palautetta App Tracking Protectionista? Käytä <annotation type="use_this_form_link">tätä lomaketta</annotation>.</string>
-    <string name="atp_ReportBreakageAppEntry">%1$s-sovellus</string>
+    <string name="atp_ReportBreakageAppEntry" instruction="Placeholder is the name of an app">%1$s-sovellus</string>
     <string name="atp_ReportBreakageAppSubmitCta">Lähetä</string>
     <string name="atp_ReportBreakageAppNextCta">Seuraava</string>
     <string name="atp_ReportBreakageFormWhatHappenedText">Kuvaile, mitä tapahtuu, mitä odotit tapahtuvan ja vaiheet, jotka johtivat ongelmaan.</string>
     <string name="atp_ReportBreakageFormInputHint">Kerro meille lisää kohtaamasi ongelmasta</string>
-    <string name="atp_ReportBreakageFormCheckboxText">Napsauttamalla \"Lähetä\" hyväksyn, että DuckDuckGo voi käyttää tämän ilmoituksen tietoja App Tracking Protectionin parantamiseen.
+    <string name="atp_ReportBreakageFormCheckboxText">Napsauttamalla \"Lähetä\" hyväksyn, että DuckDuckGo voi käyttää tämän ilmoituksen tietoja sovelluksen ominaisuuksien parantamiseen.
     </string>
     <string name="atp_ReportBreakageFormDisclaimerText">
-        <![CDATA[Tässä lomakkeessa annettujen tietojen lisäksi sovellusongelmaraporttisi sisältää:<br/>• Sovelluspaketin nimen<br/>• Luettelon sovelluksessa estetyistä seurantalaitteista<br/>• Tiedon siitä, onko App Tracking Protection käytössä<br/>• DuckDuckGo-sovelluksen koostetun diagnostiikan<br/>]]>
+        <![CDATA[Tässä lomakkeessa annettujen tietojen lisäksi sovellusongelmaraporttisi sisältää:<br/>• Sovelluspaketin nimen<br/>• Luettelon sovelluksessa estetyistä seurantalaitteista<br/>• Tiedon siitä, ovatko tietyt DuckDuckGo-ominaisuudet käytössä<br/>• DuckDuckGo-sovelluksen koostetun diagnostiikan<br/>]]>
     </string>
     <string name="atp_ReportBreakageSent">Ilmoitus lähetetty, kiitos! Palautteesi auttaa meitä parantamaan App Tracking Protectionia kaikille.</string>
     <string name="atp_ThanksForTheFeedback">Kiitos palautteesta!</string>
@@ -189,43 +181,54 @@
     <!--  Tracker Profiling Info -->
     <string name="atp_ProfilingActivityTitle">Tietoja sovellusten seurantalaitteista</string>
     <string name="atp_ProfilingInfoTitle">Mitä ovat sovellusten seurantalaitteet?</string>
-    <string name="atp_ProfilingInfoFirstParagraph">Olet luultavasti kuullut, miten Googlen ja Facebookin kaltaiset yritykset seuraavat sinua kulissien takana kolmannen osapuolen sivustoilla. Mutta tiesitkö, että ne seuraavat myös henkilökohtaisia tietojasi laitteesi sovellusten kautta?\n\n<b>Yli 96\u0025 sadasta suositusta ilmaisesta Android-sovelluksesta</b>, joita testasimme sisälsi piilotettuja kolmannen osapuolen seurantalaitteita. Niistä 87\u0025 lähetti tietoja Googlelle ja 68\u0025 lähetti tietoja Facebookille. Tätä tapahtuu myös silloin, kun et käytä laitettasi.\n\n<b>Sovellusten seurantalaitteet voivat tavoittaa paljon suuremman määrän tietoa,</b> kuin verkkosivuston seurantalaitteet. Ne voivat selvittää esimerkiksi tarkan sijaintisi ja missä rakennuksen kerroksessa olet, kuinka usein pelaat pelejä töissä, ja milloin ja miten kauan nukut päivittäin. <b>Vaikka sinulla ei olisi esimerkiksi Google- tai Facebook-tiliä, ne voivat silti kerätä tietoja sinusta sovelluksistasi.</b>\n\nSeurantaverkot, kuten Facebook ja Google, käyttävät näitä pieniä tietoja <b>luodakseen sinusta digitaalisen profiilin.</b> Sen avulla seurantaverkot voivat manipuloida sitä, mitä näet verkossa ja kilpailuttaa mainostajia mahdollisuudesta tavoittaa sinut tietojesi perusteella.\n\nSovellusten seurantalaitteet ovat SUURI ongelma yksityisyydelle. <b>DuckDuckGolla on ratkaisu, joka voi auttaa.</b>\n\nKun App Tracking Protection on otettu käyttöön DuckDuckGo Privacy Browser -sovelluksessa, se estää monia muiden sovellusten sisältämiä seurantalaitteita, samalla kun DuckDuckGo-sovellus estää katsomiltasi verkkosivustoilta löytämänsä seurantalaitteet. <b>Tällaiset kaksikerroksiset suojaukset vähentävät sitä, mitä seurantayritykset tietävät sinusta</b>, joten voit käyttää sovelluksiasi rauhallisin mielin tietäen, että olet paremmin suojattu.</string>
+    <string name="atp_ProfilingInfoFirstParagraph" formatted="false">Olet luultavasti kuullut, miten Googlen ja Facebookin kaltaiset yritykset seuraavat sinua kulissien takana kolmannen osapuolen sivustoilla. Mutta tiesitkö, että ne seuraavat myös henkilökohtaisia tietojasi laitteesi sovellusten kautta?\n\n<b>Yli 96\\% sadasta suositusta ilmaisesta Android-sovelluksesta</b>, joita testasimme sisälsi piilotettuja kolmannen osapuolen seurantalaitteita. Niistä 87\\% lähetti tietoja Googlelle ja 68\\% lähetti tietoja Facebookille. Tätä tapahtuu myös silloin, kun et käytä laitettasi.\n\n<b>Sovellusten seurantalaitteet voivat tavoittaa paljon suuremman määrän tietoa,</b> kuin verkkosivuston seurantalaitteet. Ne voivat selvittää esimerkiksi tarkan sijaintisi ja missä rakennuksen kerroksessa olet, kuinka usein pelaat pelejä töissä, ja milloin ja miten kauan nukut päivittäin. <b>Vaikka sinulla ei olisi esimerkiksi Google- tai Facebook-tiliä, ne voivat silti kerätä tietoja sinusta sovelluksistasi.</b>\n\nSeurantaverkot, kuten Facebook ja Google, käyttävät näitä pieniä tietoja <b>luodakseen sinusta digitaalisen profiilin.</b> Sen avulla seurantaverkot voivat manipuloida sitä, mitä näet verkossa ja kilpailuttaa mainostajia mahdollisuudesta tavoittaa sinut tietojesi perusteella.\n\nSovellusten seurantalaitteet ovat SUURI ongelma yksityisyydelle. <b>DuckDuckGolla on ratkaisu, joka voi auttaa.</b>\n\nKun App Tracking Protection on otettu käyttöön DuckDuckGo Privacy Browser -sovelluksessa, se estää monia muiden sovellusten sisältämiä seurantalaitteita, samalla kun DuckDuckGo-sovellus estää katsomiltasi verkkosivustoilta löytämänsä seurantalaitteet. <b>Tällaiset kaksikerroksiset suojaukset vähentävät sitä, mitä seurantayritykset tietävät sinusta</b>, joten voit käyttää sovelluksiasi rauhallisin mielin tietäen, että olet paremmin suojattu.</string>
 
     <!--  App Tracking Protection Activity -->
     <string name="atp_ActivityPastWeek">Viimeiset 7 päivää</string>
     <string name="atp_ActivityTitle">Sovellusten seurantasuojaus</string>
     <string name="atp_MostRecentActivityTitle">Kaikki viimeaikainen toiminta</string>
-    <string name="atp_ActivityRecentActivity">Viimeaikainen toiminta</string>
+    <string name="atp_ActivityRecentActivity">Toiminta</string>
     <string name="atp_ActivityCtaShowAll">Näytä kaikki viimeaikaiset toiminnat</string>
     <string name="atp_ActivityAppTrackersFAQ">Mitä ovat sovellusten seurantalaitteet?</string>
     <string name="atp_ActivityReportProblem">Ilmoita ongelmasta sovelluksessa</string>
     <string name="atp_ActivityBetaInstructions">Beetaohjeet</string>
-    <string name="atp_ActivityManageProtection">Ongelmia jonkin sovelluksen kanssa?</string>
+    <string name="atp_ActivityManageProtection">Onko sinulla ongelmia?</string>
+    <string name="atp_RecentAppActivity">Viimeaikainen sovellustoiminta</string>
 
-    <string name="atp_ActivityTrackersCompanyBlockedOnetimeOneCompany"><![CDATA[%1$d seurantayritys estetty %2$d yritykseltä <b>%3$s</b> sovelluksessa]]></string>
-    <string name="atp_ActivityTrackersCompanyBlockedOnetimeOtherCompanies"><![CDATA[%1$d seurantayritys estetty %2$d yritykseltä <b>%3$s</b> sovelluksessa]]></string>
-    <string name="atp_ActivityTrackersCompanyBlockedOtherTimesOneCompany"><![CDATA[%1$d seurantayritystä estetty %2$d yritykseltä <b>%3$s</b> sovelluksessa]]></string>
-    <string name="atp_ActivityTrackersCompanyBlockedOtherTimesOtherCompanies"><![CDATA[%1$d seurantayritystä estetty %2$d yritykseltä <b>%3$s</b> sovelluksessa]]></string>
+    <string name="atp_ActivityTrackersCompanyBlockedOnetimeOneCompany" instruction="Placeholder %1$s is the name of the app doing the tracking. Example: 1 tracking attempt blocked from 1 company in Venmo app.">
+        <![CDATA[1 seurantayritys estetty 1 yritykseltä sovelluksessa <b>%1$s</b>]]>
+    </string>
+    <string name="atp_ActivityTrackersCompanyBlockedOnetimeOtherCompanies" instruction="Placeholder %1$d is the number of companies doing the tracking. Placeholder %2$s is the name of the app doing the tracking. Example: 1 tracking attempt blocked from 5 companies in Venmo app.">
+        <![CDATA[1 seurantayritys estetty %1$d yritykseltä sovelluksessa <b>%2$s</b>]]>
+    </string>
+    <string name="atp_ActivityTrackersCompanyBlockedOtherTimesOneCompany" instruction="Placeholder %1$d is the number of tracking attempts blocked. Placeholder %2$s is the name of the app doing the tracking. Example: 5 tracking attempts blocked from 1 company in Venmo app.">
+        <![CDATA[%1$d seurantayritystä estetty 1 yritykseltä kohteessa <b>%2$s</b>]]>
+    </string>
+    <string name="atp_ActivityTrackersCompanyBlockedOtherTimesOtherCompanies" instruction="Placeholder %1$d is the number of tracking attempts blocked. Placeholder %2$d is the number of companies doing the tracking. Placeholder %3$s is the name of the app doing the tracking. Example: 10 tracking attempts blocked from 5 companies in Venmo app.">
+        <![CDATA[%1$d seurantayritystä estetty %2$d yritykseltä <b>%3$s</b> sovelluksessa]]>
+    </string>
 
-    <string name="atp_ActivityEmptyListTitle">Ei uutta toimintaa</string>
-    <string name="atp_ActivityEmptyListMessage">Jatka laitteen käyttöä. Seurantayritykset, jotka App Tracking Protection estää, näkyvät tässä.</string>
     <string name="atp_ActivityPastWeekBlocked">Estetty</string>
     <string name="atp_ActivityPastWeekAcross">Kaikkiaan</string>
 
-     <plurals name="atp_ActivityPastWeekTrackerCount" tools:ignore="ImpliedQuantity">
+    <plurals name="atp_ActivityPastWeekTrackerCount" tools:ignore="ImpliedQuantity">
         <item quantity="one">Seurantayritys</item>
         <item quantity="other">Seurantayritykstä</item>
     </plurals>
-      <plurals name="atp_ActivityPastWeekAppCount" tools:ignore="ImpliedQuantity">
+    <plurals name="atp_ActivityPastWeekAppCount" tools:ignore="ImpliedQuantity">
         <item quantity="one">Sovellus</item>
         <item quantity="other">Sovellukset</item>
     </plurals>
-    <string name="atp_ActivityEnabledLabel">Tämä ominaisuus on beetavaiheessa. <annotation type="app_settings_link">Ongelmia sovelluksen kanssa?</annotation></string>
     <string name="atp_ActivityDisabledLabel"><b>App Tracking Protection on poistettu käytöstä</b>\nAiheuttiko App Tracking Protection ongelmia sovelluksissasi? <annotation type="report_issues_link">Ilmoita ongelmista</annotation></string>
-    <string name="atp_ActivityRevokedLabel"><b>Laitteesi VPN poisti App Tracking Protectionin käytöstä.</b>\nAiheuttiko App Tracking Protection ongelman sovelluksissasi? <annotation type="report_issues_link">Ilmoita ongelmista</annotation></string>
+    <string name="atp_ActivityDisabledBySystemLabel"><b>Android poisti App Tracking Protectionin käytöstä</b>. Haluatko estää tämän jatkossa? <annotation type="re_enable_link">Ota uudelleen käyttöön</annotation></string>
+    <string name="atp_ActivityRevokedLabel"><b>App Tracking Protection on poistettu käytöstä.</b>\nLaitteesi VPN-sovellus on saattanut poistaa sen käytöstä. Ota uudelleen käyttöön yllä olevalla vaihtonäppäimellä.</string>
     <string name="atp_ActivityAbout">Tietoa meistä</string>
     <string name="atp_ActivityManage">Hallitse</string>
     <string name="atp_ActivityRemoveFeature">Poista käytöstä ja poista tiedot</string>
+    <string name="atp_ActivityBlockingTrackersEnabledDescription">DuckDuckGo estää piilotettuja seurantalaitteita kaikissa sovelluksissasi.</string>
+    <string name="atp_ActivityBlockingTrackersDisabledDescription">Ota App Tracking Protection uudelleen käyttöön estääksesi seurannan kaikissa sovelluksissasi.</string>
+    <string name="atp_ActivityBlockedByHeaderText" instruction="Placeholder %1$s is a text containing either Today or Yesterday. Example: Blocked by DuckDuckGo Today">DuckDuckGo esti %1$s</string>
+    <string name="atp_ActivityBlockedByOnDateHeaderText" instruction="Placeholder %1$s is a text containing a formatted date like Feb 05. Example: Blocked by DuckDuckGo on Feb 05">DuckDuckGo esti %1$s</string>
 
     <!--  App Tracking Protection FAQ -->
     <string name="atp_FAQActivityTitle">Usein kysyttyä</string>
@@ -243,8 +246,6 @@
     <string name="atp_FAQSixthText">App Tracking Protection toimii laitteessasi, eikä lähetä henkilökohtaisia tietojasi laitteeltasi DuckDuckGolle.</string>
 
     <!--  App Tracking Protection Waitlist -->
-    <string name="atp_WaitlistActivityTitle">Sovellusten seurantasuojaus</string>
-    <string name="atp_WaitlistActivityWaitlistTitle">App Tracking Protection -jonotuslista</string>
     <string name="atp_WaitlistNotificationTitle">App Tracking Protection -kutsusi on täällä!</string>
     <string name="atp_WaitlistNotificationDescription">Liityit odotuslistalle ja pyysit meitä ilmoittamaan, kun on sinun vuorosi kokeilla App Tracking Protection -ominaisuuttamme. Näytä kutsu napauttamalla.</string>
     <string name="atp_WaitlistStatusNotJoined">Yksi helppo askel kohti parempaa sovellusten tietosuojaa!</string>
@@ -263,7 +264,6 @@
     <string name="atp_WaitlistErrorJoining">Odotuslistalle liityttäessä tapahtui virhe, yritä myöhemmin uudelleen</string>
     <string name="atp_WaitlistJoinedWithNotification">Lähetämme sinulle ilmoituksen, kun App Tracking Protection on valmis sinua varten.\n\n<annotation type="beta_link">Lue lisää beetaversiosta</annotation></string>
     <string name="atp_WaitlistJoinedWithoutNotification">Kutsu kokeilla App Tracking Protectionia saapuu tähän osoitteeseen. Palaa pian takaisin, tai voimme lähettää sinulle ilmoituksen, kun on sinun vuorosi\n\n<annotation type="notify_me_link">Ilmoita minulle</annotation>\n\n<annotation type="beta_link">Lue lisää beetaversiosta</annotation></string>
-    <string name="atp_WaitlistRedeemCodeActivityTitle">Anna kutsukoodisi</string>
     <string name="atp_WaitlistRedeemedCodeStatus">Onnistui! Pääsit mukaan.</string>
     <string name="atp_WaitlistBetaBlogPost">https://spreadprivacy.com/introducing-app-tracking-protection</string>
 
@@ -273,14 +273,15 @@
         <item quantity="other">%1$d yritystä. Tiedetään keräävän:</item>
     </plurals>
     <plurals name="atp_CompanyDetailsTrackingAttemptsTitle">
-        <item quantity="one">Estetty %1$d seurantayritys</item>
-        <item quantity="other">Estetty %1$d seurantayritystä</item>
+        <item quantity="one">DuckDuckGo esti %1$d seurantayrityksen</item>
+        <item quantity="other">DuckDuckGo esti %1$d seurantayritystä</item>
     </plurals>
     <string name="atp_CompanyDetailsTrackingMenuReport">Ilmoita ongelmasta tässä sovelluksessa</string>
-    <string name="atp_CompanyDetailsTrackingShowMore">Näytä %1$d lisää</string>
+    <string name="atp_CompanyDetailsTrackingShowMore" instruction="Placeholder is a number">Näytä %1$d lisää</string>
     <string name="atp_CompanyDetailsTrackingLearnMore">Sovellukset voivat sisältää muiden yritysten seurantalaitteita esimerkiksi analytiikkaa ja markkinointia varten. Jos emme estäisi niitä, nämä seurantalaitteet voisivat luoda sinusta entistäkin yksityiskohtaisempia digitaalisia profiileja. <annotation type="learn_more_link">Lue Lisää.</annotation></string>
     <string name="atp_CompanyDetailsTrackingShowLess">Näytä vähemmän</string>
     <string name="atp_CompanyDetailsAppInfoPanel">Suojaus on tällä hetkellä pois käytöstä tässä sovelluksessa. Jos App Tracking Protection aiheutti ongelman, <annotation type="report_issues_link">ilmoita ongelmasta</annotation></string>
+    <string name="atp_CompanyDetailsNotAvailableForUninstalledApps" instruction="Toast shown when users tap on item that corresponds to an already uninstalled application">Seurantatietoja ei ole saatavissa poistetuille sovelluksille</string>
 
     <!--  App Tracking Company Signals -->
     <string name="atp_TrackingSignalAAID">Android-mainontatunnus</string>
@@ -354,10 +355,17 @@
     <string name="atp_VpnConflictDialogGotIt">Selvä</string>
 
     <!-- Manage Recent Apps Protection -->
-    <string name="atp_ManageRecentAppsProtectionReportIssues">Jos sinulla on ongelmia sovelluksen kanssa (sisältö ei esimerkiksi lataudu), yritä poistaa kyseisen sovelluksen suojaus käytöstä ja <annotation type="report_issues_link">lähettää raportti.</annotation></string>
-    <string name="atp_ManageRecentAppsProtectionActivityTitle">Viimeaikaiset sovellukset</string>
+    <string name="atp_ManageRecentAppsProtectionReportIssues">Jos sinulla on edelleen ongelmia jonkin tietyn sovelluksen kanssa, poista kyseisen sovelluksen suojaus käytöstä ja <annotation type="report_issues_link">lähetä raportti.</annotation></string>
+    <string name="atp_ManageRecentAppsProtectionActivityTitle">Onko sinulla ongelmia?</string>
     <string name="atp_ManageRecentAppsProtectionShowAll">Näytä kaikki sovellukset</string>
-    <string name="atp_ManageRecentAppsProtectionEmpty">Ei vielä viimeaikaisia sovelluksia</string>
+    <string name="atp_ManageRecentAppsProtectionEmpty">Täällä näkyvät sovellukset, joiden seurantayritykset on estetty hiljattain</string>
+    <string name="atp_ManageRecentAppsProtectionSectionTitle">Suositellut järjestelmäasetukset</string>
+    <string name="atp_ManageRecentAppsProtectionAlwaysOnTitle">Varmista, että VPN on aina PÄÄLLÄ</string>
+    <string name="atp_ManageRecentAppsProtectionAlwaysOnByline">Androidin asetuksien Aina päällä -toiminto käynnistää App Tracking Protectionin automaattisesti uudelleen VPN-yhteyden katkeamisen jälkeen.</string>
+    <string name="atp_ManageRecentAppsProtectionAllowUnrestrictedBattTitle">Salli sovelluksen akun rajoittamaton käyttö</string>
+    <string name="atp_ManageRecentAppsProtectionAllowUnrestrictedBattByline">Salli rajoittamaton käyttö sovelluksen akkuasetuksissa välttääksesi Androidia poistamasta App Tracking Protectionia käytöstä taustalla</string>
+    <string name="atp_ManageRecentAppsProtectionUnrestrictedBattTitle">Sovelluksen akun käyttöä ei ole rajoitettu</string>
+    <string name="atp_ManageRecentAppsProtectionUnrestrictedBattByline">Sovelluksen akkuasetuksissa tämä estää Androidia poistamasta App Tracking Protectionia käytöstä taustalla</string>
 
     <!--  App Tracking Protection Remove Feature Dialog -->
     <string name="atp_RemoveFeatureDialogTitle">Poistetaanko tiedot käytöstä ja poistetaan?</string>
@@ -366,10 +374,51 @@
     <string name="atp_RemoveFeatureDialogRemove">Poista Käytöstä</string>
 
     <!--  App Tracking Protection Promote Always On -->
-    <string name="atp_PromoteAlwaysOnDialogTitle">Määritä aina käytössä -tilaan?</string>
-    <string name="atp_PromoteAlwaysOnDialogMessage">Estääksesi Androidia poistamasta App Tracking Protectionia ajoittain käytöstä:\n\nSiirry Androidin asetuksiin\nAvaa DuckDuckGon VPN-asetukset\nOta käyttöön \"Aina käytössä oleva VPN\"</string>
     <string name="atp_PromoteAlwaysOnDialogSettings">Siirry kohtaan Asetukset</string>
-    <string name="atp_PromoteAlwaysOnDialogLater">Muistuta myöhemmin</string>
-    <string name="atp_PromoteAlwaysOnDialogForget">Ei kiitos</string>
+    <string name="atp_PromoteAlwaysOnDialogNotNow">Ei nyt</string>
+    <string name="atp_AlwaysOnModalBody"><![CDATA[Mene laitteellasi DuckDuckGon VPN-asetuksiin ja ota käyttöön <b>Aina päällä</b> -asetus VPN:lle, jotta Android ei poista suojausta käytöstä.\n\nMuista jättää toinen asetus pois päältä.]]></string>
+    <string name="atp_AlwaysOnLockdownModalBody"><![CDATA[Voit välttää sovellusongelmat siirtymällä laitteellasi <b>DuckDuckGon VPN-asetuksiin</b> ja poistamalla <b>Estä yhteydet ilman VPN:ää</b> -asetuksen käytöstä.]]></string>
+    <string name="atp_AlwaysOnModalHeading">Määritä asetukseksi Aina päällä</string>
+    <string name="atp_AlwaysOnLockdownModalHeading">Muokkaa VPN-asetuksia</string>
+    <string name="atp_AlwaysOnLockDownEnabled"><b>Toimia vaaditaan!</b> Sovellusongelmien välttämiseksi sinun on muokattava Android-asetuksia. <annotation type="open_settings_link">Muokkaa asetuksia</annotation></string>
+    <string name="atp_AlwaysOnLockDownNotificationTitle">Toimia vaaditaan! App Tracking Protection edellyttää Android-asetuksen muuttamista.</string>
+
+    <!--  App Tracking Protection Exclusion list -->
+    <string name="atp_TrackingProtectionExclusionListActivityTitle">Omat sovellukset</string>
+    <string name="atp_ExcludedReasonIssuesMayOccur">Sovellusongelmia voi ilmetä, jos tämä on käytössä</string>
+    <string name="atp_ExcludeAppsManuallyCTAEnableAnyway">Ota käyttöön joka tapauksessa</string>
+    <string name="atp_ExcludeAppsManuallyEnableAnywayLabel" instruction="Placeholder is the name of an app">%1$s saattaa kohdata ongelmia, jos App Tracking Protection on käytössä</string>
+    <string name="atp_ExcludeAppsManuallyDisableAppDialogTitle">Ilmoita ongelmasta?</string>
+    <string name="atp_ExcludeAppsManuallyDisableAppDialogLabel" instruction="Placeholder is the name of an app">Kerro meille, jos olet poistanut App Tracking Protectionin käytöstä kohteelle %1$s, koska olet kohdannut ongelmia sovelluksen kanssa.</string>
+    <string name="atp_ExcludeAppsManuallyCTAReportIssue">Ilmoita ongelmasta</string>
+    <string name="atp_ExcludeAppsManuallyCTANotNow">Ei nyt</string>
+    <string name="atp_ActivityRecentActivityHeader">Toiminta</string>
+    <string name="atp_ActivityManageProtectionLabel">Onko sinulla ongelmia?</string>
+    <string name="atp_ActivityEnabledBannerLabel">Joidenkin sovellusten suojaus poistetaan käytöstä automaattisesti. <annotation type="app_settings_link">Näytä sovellukset</annotation></string>
+    <string name="atp_ActivityDescription">Estetyt seurantayritykset näkyvät täällä</string>
+    <plurals name="atp_ActivityProtectedApps" instruction="Placeholder is the number of apps that are protected">
+        <item quantity="one">%1$s sovelluksistasi on suojattu piilotetuilta seurantalaitteilta, jotka yrittävät päästä käsiksi henkilökohtaisiin tietoihin</item>
+        <item quantity="other">%1$s sovelluksistasi on suojattu piilotetuilta seurantalaitteilta, jotka yrittävät päästä käsiksi henkilökohtaisiin tietoihin</item>
+    </plurals>
+    <plurals name="atp_ActivityUnprotectedApps" instruction="Placeholder is the number of apps that are not protected">
+        <item quantity="one">%1$s sovelluksesi suojaus on poistettu käytöstä</item>
+        <item quantity="other">%1$s sovelluksesi suojaus on poistettu käytöstä</item>
+    </plurals>
+    <string name="atp_ActivityAppTpEnabledCtaText"><![CDATA[Hyviä uutisia! App Tracking Protection on nyt käytössä.<br/><br/>👍Näytän sinulle reaaliaikaisen luettelon laitteellasi olevista sovelluksista, joiden uskon yrittävän seurata sinua.]]></string>
+    <string name="atp_ActivityAppTpEnabledCtaButtonLabel">Selvä!</string>
+    <string name="atp_ExcludedAppsFilterProtectedLabel" instruction="Placeholder is the number of apps where protection is enabled">Suojaus käytössä (%1$s)</string>
+    <string name="atp_ExcludedAppsFilterUnprotectedLabel" instruction="Placeholder is the number of apps where protection is disabled">Suojaus poistettu käytöstä (%1$s)</string>
+    <string name="atp_ExcludedAppsFilterAllLabel">Kaikki</string>
+    <string name="atp_ExcludedAppsFilterMenuProtectedLabel">Suojaus käytössä</string>
+    <string name="atp_ExcludedAppsFilterMenuUnprotectedLabel">Suojaus poistettu käytöstä</string>
+    <string name="atp_ExcludedAppsFilterMenuAllLabel">Kaikki</string>
+    <string name="atp_ActivityViewAppsLabel">Näytä sovellukset</string>
+    <string name="atp_ActivityEnabledMoreThanADayLabel">Ongelmia sovelluksen kanssa? <annotation type="app_settings_link">Auta meitä parantamaan</annotation></string>
+    <string name="atp_ExcludedAppsEnabledLearnWhyLabel">Joissakin sovelluksissa voi esiintyä ongelmia, kun App Tracking Protection on käytössä.\n<annotation type="learn_why_link">Lue miksi</annotation></string>
+    <string name="atp_ExcludedAppsDisabledLearnWhyLabel">Suojaus on poistettu käytöstä sovelluksissa, joissa on tunnettuja ongelmia. Voit ottaa nämä sovellukset käyttöön, mutta ne eivät välttämättä toimi odotetulla tavalla. <annotation type="learn_why_link">Lue miksi</annotation></string>
+
+    <!-- Notify Me View on AppTP -->
+    <string name="appTrackingProtectionNotifyMeTitle">Pidä silmällä estettyjä seurantaohjelmia</string>
+    <string name="appTrackingProtectionNotifyMeSubtitle">Saat päivityksiä estetyistä seurantayrityksistä ilmoituslaatikkoosi.</string>
 
 </resources>

@@ -16,7 +16,7 @@
 
 package com.duckduckgo.privacy.config.impl.features.trackingparameters
 
-import com.duckduckgo.app.FileUtilities
+import com.duckduckgo.common.test.FileUtilities
 import com.duckduckgo.privacy.config.api.PrivacyFeatureName
 import com.duckduckgo.privacy.config.store.*
 import com.duckduckgo.privacy.config.store.features.trackingparameters.TrackingParametersRepository
@@ -65,7 +65,7 @@ class TrackingParametersPluginTest {
     fun whenFeatureNameMatchesTrackingParametersAndIsNotEnabledThenStoreFeatureDisabled() {
         val jsonString = FileUtilities.loadText(
             TrackingParametersPluginTest::class.java.classLoader!!,
-            "json/tracking_parameters_disabled.json"
+            "json/tracking_parameters_disabled.json",
         )
 
         testee.store(FEATURE_NAME_VALUE, jsonString)
@@ -77,7 +77,7 @@ class TrackingParametersPluginTest {
     fun whenFeatureNameMatchesTrackingParametersAndHasMinSupportedVersionThenStoreMinSupportedVersion() {
         val jsonString = FileUtilities.loadText(
             TrackingParametersPluginTest::class.java.classLoader!!,
-            "json/tracking_parameters_min_supported_version.json"
+            "json/tracking_parameters_min_supported_version.json",
         )
 
         testee.store(FEATURE_NAME_VALUE, jsonString)
@@ -96,7 +96,7 @@ class TrackingParametersPluginTest {
 
         verify(mockTrackingParametersRepository).updateAll(
             exceptionArgumentCaptor.capture(),
-            trackingParameterArgumentCaptor.capture()
+            trackingParameterArgumentCaptor.capture(),
         )
 
         val trackingParameterExceptionEntityList = exceptionArgumentCaptor.firstValue

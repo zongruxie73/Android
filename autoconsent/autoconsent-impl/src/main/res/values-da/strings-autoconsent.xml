@@ -14,10 +14,11 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-<resources>
-    <!-- Autoconsent -->
-    <string name="autoconsentTitle">Administrer cookie pop op-vinduer</string>
-    <string name="autoconsentDescription">Når DuckDuckGo registrerer pop op-vinduer med samtykke til brug af cookies på websteder, du besøger, kan vi automatisk indstille dine cookiepræferencer til at minimere cookies og maksimere privatlivets fred og derefter lukke pop op-vinduer.</string>
-    <string name="autoconsentToggle">Lad DuckDuckGo administrere pop op-vinduer med samtykke til brug af cookies</string>
-
+<!-- smartling.entity_escaping = false -->
+<!-- smartling.instruction_attributes = instruction -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="autoconsentTitle">Beskyttelse mod pop op-beskeder om cookies</string>
+    <string name="autoconsentDescription"><![CDATA[Når DuckDuckGo registrerer pop op-beskeder om cookies på websteder, du besøger, kan vi automatisk indstille dine cookiepræferencer til at minimere cookies og maksimere privatlivets fred og derefter lukke pop op-vinduerne. <u><a href=\"\">Lær mere</a><u/>]]></string>
+    <string name="autoconsentDescriptionNew"><![CDATA[DuckDuckGo vil forsøge at vælge de mest private indstillinger og skjule disse pop op-vinduer for dig.\n<a href=\"\">Mere info</a>]]></string>
+    <string name="autoconsentToggle">Lad DuckDuckGo håndtere pop op-beskeder om cookies</string>
 </resources>

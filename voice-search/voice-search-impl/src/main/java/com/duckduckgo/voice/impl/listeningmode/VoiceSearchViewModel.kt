@@ -21,11 +21,13 @@ import androidx.lifecycle.viewModelScope
 import com.duckduckgo.anvil.annotations.ContributesViewModel
 import com.duckduckgo.di.scopes.ActivityScope
 import com.duckduckgo.voice.impl.listeningmode.OnDeviceSpeechRecognizer.Event.PartialResultReceived
+import com.duckduckgo.voice.impl.listeningmode.OnDeviceSpeechRecognizer.Event.RecognitionFailed
 import com.duckduckgo.voice.impl.listeningmode.OnDeviceSpeechRecognizer.Event.RecognitionSuccess
+import com.duckduckgo.voice.impl.listeningmode.OnDeviceSpeechRecognizer.Event.RecognitionTimedOut
 import com.duckduckgo.voice.impl.listeningmode.OnDeviceSpeechRecognizer.Event.VolumeUpdateReceived
 import com.duckduckgo.voice.impl.listeningmode.VoiceSearchViewModel.Command.HandleSpeechRecognitionSuccess
 import com.duckduckgo.voice.impl.listeningmode.VoiceSearchViewModel.Command.UpdateVoiceIndicator
-import com.duckduckgo.voice.impl.listeningmode.OnDeviceSpeechRecognizer.Event.RecognitionTimedOut
+import javax.inject.Inject
 import kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -33,21 +35,20 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @ContributesViewModel(ActivityScope::class)
 class VoiceSearchViewModel @Inject constructor(
-    private val speechRecognizer: OnDeviceSpeechRecognizer
+    private val speechRecognizer: OnDeviceSpeechRecognizer,
 ) : ViewModel() {
     data class ViewState(
         val result: String = "",
-        val unsentResult: String = ""
+        val unsentResult: String = "",
     )
 
     sealed class Command {
         data class UpdateVoiceIndicator(val volume: Float) : Command()
         data class HandleSpeechRecognitionSuccess(val result: String) : Command()
-        object TerminateVoiceSearch : Command()
+        data class TerminateVoiceSearch(val error: Int) : Command()
     }
 
     private val viewState = MutableStateFlow(ViewState())
@@ -66,7 +67,7 @@ class VoiceSearchViewModel @Inject constructor(
         if (viewState.value.result.isNotEmpty()) {
             viewModelScope.launch {
                 viewState.emit(
-                    viewState.value.copy(unsentResult = viewState.value.result)
+                    viewState.value.copy(unsentResult = viewState.value.result),
                 )
             }
         }
@@ -76,19 +77,22 @@ class VoiceSearchViewModel @Inject constructor(
                 is PartialResultReceived -> showRecognizedSpeech(it.partialResult)
                 is RecognitionSuccess -> handleSuccess(it.result)
                 is VolumeUpdateReceived -> sendCommand(UpdateVoiceIndicator(it.normalizedVolume))
-                is RecognitionTimedOut -> handleTimeOut()
+                is RecognitionFailed -> handleRecognitionFailed(it.error)
+                is RecognitionTimedOut -> handleTimeOut(it.error)
             }
         }
     }
 
-    private fun handleTimeOut() {
+    private fun handleTimeOut(error: Int) {
         if (viewState.value.result.isEmpty()) {
-            viewModelScope.launch {
-                command.send(Command.TerminateVoiceSearch)
-            }
+            viewModelScope.launch { command.send(Command.TerminateVoiceSearch(error)) }
         } else {
             handleSuccess(viewState.value.result)
         }
+    }
+
+    private fun handleRecognitionFailed(error: Int) {
+        sendCommand(Command.TerminateVoiceSearch(error))
     }
 
     fun stopVoiceSearch() {
@@ -96,9 +100,7 @@ class VoiceSearchViewModel @Inject constructor(
     }
 
     private fun sendCommand(commandToSend: Command) {
-        viewModelScope.launch {
-            command.send(commandToSend)
-        }
+        viewModelScope.launch { command.send(commandToSend) }
     }
 
     private fun handleSuccess(result: String) {
@@ -106,9 +108,9 @@ class VoiceSearchViewModel @Inject constructor(
             HandleSpeechRecognitionSuccess(
                 getFullResult(
                     result,
-                    viewState.value.unsentResult
-                )
-            )
+                    viewState.value.unsentResult,
+                ),
+            ),
         )
     }
 
@@ -116,8 +118,8 @@ class VoiceSearchViewModel @Inject constructor(
         viewModelScope.launch {
             viewState.emit(
                 viewState.value.copy(
-                    result = getFullResult(result, viewState.value.unsentResult)
-                )
+                    result = getFullResult(result, viewState.value.unsentResult),
+                ),
             )
         }
         if (result.hasReachedWordLimit()) {
@@ -131,7 +133,7 @@ class VoiceSearchViewModel @Inject constructor(
 
     private fun getFullResult(
         result: String,
-        unsentResult: String
+        unsentResult: String,
     ): String {
         return if (unsentResult.isNotEmpty()) {
             "$unsentResult $result"
@@ -145,9 +147,9 @@ class VoiceSearchViewModel @Inject constructor(
             HandleSpeechRecognitionSuccess(
                 getFullResult(
                     viewState.value.result,
-                    viewState.value.unsentResult
-                )
-            )
+                    viewState.value.unsentResult,
+                ),
+            ),
         )
     }
 }

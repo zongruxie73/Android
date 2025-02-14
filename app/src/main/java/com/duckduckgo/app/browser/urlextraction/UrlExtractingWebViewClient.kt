@@ -28,9 +28,8 @@ import com.duckduckgo.app.browser.certificates.rootstore.CertificateValidationSt
 import com.duckduckgo.app.browser.certificates.rootstore.TrustedCertificateStore
 import com.duckduckgo.app.browser.cookies.ThirdPartyCookieManager
 import com.duckduckgo.app.browser.httpauth.WebViewHttpAuthStore
-import com.duckduckgo.app.global.DispatcherProvider
+import com.duckduckgo.common.utils.DispatcherProvider
 import com.duckduckgo.cookies.api.CookieManagerProvider
-import com.duckduckgo.contentscopescripts.api.ContentScopeScripts
 import kotlinx.coroutines.*
 import timber.log.Timber
 
@@ -43,7 +42,6 @@ class UrlExtractingWebViewClient(
     private val appCoroutineScope: CoroutineScope,
     private val dispatcherProvider: DispatcherProvider,
     private val urlExtractor: DOMUrlExtractor,
-    private val contentScopeScripts: ContentScopeScripts
 ) : WebViewClient() {
 
     var urlExtractionListener: UrlExtractionListener? = null
@@ -52,11 +50,10 @@ class UrlExtractingWebViewClient(
     override fun onPageStarted(webView: WebView, url: String?, favicon: Bitmap?) {
         Timber.v("onPageStarted webViewUrl: ${webView.url} URL: $url")
         url?.let {
-            appCoroutineScope.launch(dispatcherProvider.default()) {
+            appCoroutineScope.launch(dispatcherProvider.io()) {
                 thirdPartyCookieManager.processUriForThirdPartyCookies(webView, url.toUri())
             }
         }
-        webView.evaluateJavascript("javascript:${contentScopeScripts.getScript()}", null)
         Timber.d("AMP link detection: Injecting JS for URL extraction")
         urlExtractor.injectUrlExtractionJS(webView)
     }
@@ -68,21 +65,24 @@ class UrlExtractingWebViewClient(
     }
 
     private fun flushCookies() {
-        appCoroutineScope.launch(dispatcherProvider.io()) { cookieManagerProvider.get().flush() }
+        appCoroutineScope.launch(dispatcherProvider.io()) { cookieManagerProvider.get()?.flush() }
     }
 
     @WorkerThread
     override fun shouldInterceptRequest(
         webView: WebView,
-        request: WebResourceRequest
+        request: WebResourceRequest,
     ): WebResourceResponse? {
         return runBlocking {
-            val documentUrl = withContext(Dispatchers.Main) { webView.url }
+            val documentUrl = withContext(dispatcherProvider.main()) { webView.url?.toUri() }
             Timber.v(
-                "Intercepting resource ${request.url} type:${request.method} on page $documentUrl"
+                "Intercepting resource ${request.url} type:${request.method} on page $documentUrl",
             )
             requestInterceptor.shouldIntercept(
-                request, webView, documentUrl, null
+                request,
+                webView,
+                documentUrl,
+                null,
             )
         }
     }
@@ -92,18 +92,20 @@ class UrlExtractingWebViewClient(
         view: WebView?,
         handler: HttpAuthHandler?,
         host: String?,
-        realm: String?
+        realm: String?,
     ) {
         Timber.v("onReceivedHttpAuthRequest ${view?.url} $realm, $host")
         if (handler != null) {
             Timber.v(
-                "onReceivedHttpAuthRequest - useHttpAuthUsernamePassword [${handler.useHttpAuthUsernamePassword()}]"
+                "onReceivedHttpAuthRequest - useHttpAuthUsernamePassword [${handler.useHttpAuthUsernamePassword()}]",
             )
             if (handler.useHttpAuthUsernamePassword()) {
                 val credentials =
                     view?.let {
                         webViewHttpAuthStore.getHttpAuthUsernamePassword(
-                            it, host.orEmpty(), realm.orEmpty()
+                            it,
+                            host.orEmpty(),
+                            realm.orEmpty(),
                         )
                     }
 
@@ -121,7 +123,7 @@ class UrlExtractingWebViewClient(
         when (error.primaryError) {
             SSL_UNTRUSTED -> {
                 Timber.d(
-                    "The certificate authority ${error.certificate.issuedBy.dName} is not trusted"
+                    "The certificate authority ${error.certificate.issuedBy.dName} is not trusted",
                 )
                 trusted = trustedCertificateStore.validateSslCertificateChain(error.certificate)
             }
@@ -129,14 +131,17 @@ class UrlExtractingWebViewClient(
         }
 
         Timber.d("The certificate authority validation result is $trusted")
-        if (trusted is CertificateValidationState.TrustedChain) handler.proceed()
-        else super.onReceivedSslError(view, handler, error)
+        if (trusted is CertificateValidationState.TrustedChain) {
+            handler.proceed()
+        } else {
+            super.onReceivedSslError(view, handler, error)
+        }
     }
 
     override fun onReceivedError(
         webView: WebView?,
         request: WebResourceRequest?,
-        error: WebResourceError?
+        error: WebResourceError?,
     ) {
         if (webView != null) {
             val initialUrl = (webView as UrlExtractingWebView).initialUrl

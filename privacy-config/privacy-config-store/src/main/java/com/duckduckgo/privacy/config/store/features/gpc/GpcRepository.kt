@@ -16,7 +16,7 @@
 
 package com.duckduckgo.privacy.config.store.features.gpc
 
-import com.duckduckgo.app.global.DispatcherProvider
+import com.duckduckgo.common.utils.DispatcherProvider
 import com.duckduckgo.privacy.config.api.GpcException
 import com.duckduckgo.privacy.config.api.GpcHeaderEnabledSite
 import com.duckduckgo.privacy.config.store.GpcContentScopeConfigEntity
@@ -33,7 +33,7 @@ interface GpcRepository {
     fun updateAll(
         exceptions: List<GpcExceptionEntity>,
         headerEnabledSites: List<GpcHeaderEnabledSiteEntity>,
-        gpcContentScopeConfig: GpcContentScopeConfigEntity
+        gpcContentScopeConfig: GpcContentScopeConfigEntity,
     )
 
     fun enableGpc()
@@ -48,7 +48,8 @@ class RealGpcRepository(
     private val gpcDataStore: GpcDataStore,
     val database: PrivacyConfigDatabase,
     coroutineScope: CoroutineScope,
-    dispatcherProvider: DispatcherProvider
+    dispatcherProvider: DispatcherProvider,
+    isMainProcess: Boolean,
 ) : GpcRepository {
 
     private val gpcExceptionsDao: GpcExceptionsDao = database.gpcExceptionsDao()
@@ -59,13 +60,17 @@ class RealGpcRepository(
     override var gpcContentScopeConfig: String = emptyJson
 
     init {
-        coroutineScope.launch(dispatcherProvider.io()) { loadToMemory() }
+        coroutineScope.launch(dispatcherProvider.io()) {
+            if (isMainProcess) {
+                loadToMemory()
+            }
+        }
     }
 
     override fun updateAll(
         exceptions: List<GpcExceptionEntity>,
         headerEnabledSites: List<GpcHeaderEnabledSiteEntity>,
-        gpcContentScopeConfig: GpcContentScopeConfigEntity
+        gpcContentScopeConfig: GpcContentScopeConfigEntity,
     ) {
         gpcExceptionsDao.updateAll(exceptions)
         gpcHeadersDao.updateAll(headerEnabledSites)

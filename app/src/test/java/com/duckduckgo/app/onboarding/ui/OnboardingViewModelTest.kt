@@ -17,14 +17,14 @@
 package com.duckduckgo.app.onboarding.ui
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import com.duckduckgo.app.CoroutineTestRule
 import com.duckduckgo.app.onboarding.store.AppStage
 import com.duckduckgo.app.onboarding.store.UserStageStore
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.verify
+import com.duckduckgo.common.test.CoroutineTestRule
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 
 @Suppress("EXPERIMENTAL_API_USAGE")
 class OnboardingViewModelTest {

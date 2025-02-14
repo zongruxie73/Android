@@ -19,15 +19,15 @@ package com.duckduckgo.app.icon.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.GridLayoutManager
 import com.duckduckgo.anvil.annotations.InjectWith
 import com.duckduckgo.app.browser.R
-import com.duckduckgo.mobile.android.R as CommonR
 import com.duckduckgo.app.browser.databinding.ActivityAppIconsBinding
-import com.duckduckgo.app.global.DuckDuckGoActivity
+import com.duckduckgo.common.ui.DuckDuckGoActivity
+import com.duckduckgo.common.ui.view.dialog.TextAlertDialogBuilder
+import com.duckduckgo.common.ui.viewbinding.viewBinding
 import com.duckduckgo.di.scopes.ActivityScope
-import com.duckduckgo.mobile.android.ui.viewbinding.viewBinding
+import com.duckduckgo.mobile.android.R as CommonR
 
 @InjectWith(ActivityScope::class)
 class ChangeIconActivity : DuckDuckGoActivity() {
@@ -52,12 +52,11 @@ class ChangeIconActivity : DuckDuckGoActivity() {
 
     private fun configureRecycler() {
         binding.appIconsList.layoutManager = GridLayoutManager(this, 4)
-        binding.appIconsList.addItemDecoration(ItemOffsetDecoration(this, CommonR.dimen.changeAppIconListPadding))
+        binding.appIconsList.addItemDecoration(ItemOffsetDecoration(this, CommonR.dimen.keyline_1))
         binding.appIconsList.adapter = iconsAdapter
     }
 
     private fun observeViewModel() {
-
         viewModel.viewState.observe(this) { viewState ->
             viewState?.let {
                 render(it)
@@ -80,16 +79,20 @@ class ChangeIconActivity : DuckDuckGoActivity() {
             is ChangeIconViewModel.Command.IconChanged -> {
                 finish()
             }
+
             is ChangeIconViewModel.Command.ShowConfirmationDialog -> {
-                AlertDialog.Builder(this)
+                TextAlertDialogBuilder(this)
                     .setTitle(R.string.changeIconDialogTitle)
                     .setMessage(getString(R.string.changeIconDialogMessage))
-                    .setPositiveButton(R.string.changeIconCtaAccept) { _, _ ->
-                        viewModel.onIconConfirmed(it.viewData)
-                    }
-                    .setNegativeButton(R.string.changeIconCtaCancel) { dialog, _ ->
-                        dialog.dismiss()
-                    }
+                    .setPositiveButton(R.string.changeIconCtaAccept)
+                    .setNegativeButton(R.string.changeIconCtaCancel)
+                    .addEventListener(
+                        object : TextAlertDialogBuilder.EventListener() {
+                            override fun onPositiveButtonClicked() {
+                                viewModel.onIconConfirmed(it.viewData)
+                            }
+                        },
+                    )
                     .show()
             }
         }

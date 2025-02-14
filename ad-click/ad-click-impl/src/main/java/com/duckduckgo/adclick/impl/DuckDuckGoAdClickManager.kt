@@ -19,20 +19,20 @@ package com.duckduckgo.adclick.impl
 import com.duckduckgo.adclick.api.AdClickManager
 import com.duckduckgo.adclick.impl.pixels.AdClickPixelName
 import com.duckduckgo.adclick.impl.pixels.AdClickPixels
-import com.duckduckgo.app.global.UriString
+import com.duckduckgo.app.browser.UriString
 import com.duckduckgo.di.scopes.AppScope
 import com.squareup.anvil.annotations.ContributesBinding
 import dagger.SingleInstanceIn
+import javax.inject.Inject
 import okhttp3.internal.publicsuffix.PublicSuffixDatabase
 import timber.log.Timber
-import javax.inject.Inject
 
 @SingleInstanceIn(AppScope::class)
 @ContributesBinding(AppScope::class)
 class DuckDuckGoAdClickManager @Inject constructor(
     private val adClickData: AdClickData,
     private val adClickAttribution: AdClickAttribution,
-    private val adClickPixels: AdClickPixels
+    private val adClickPixels: AdClickPixels,
 ) : AdClickManager {
 
     private val publicSuffixDatabase = PublicSuffixDatabase()
@@ -64,7 +64,7 @@ class DuckDuckGoAdClickManager @Inject constructor(
         }
 
         val savedAdDomainTldPlusOne = adClickData.getAdDomainTldPlusOne()
-        addNewExemption(savedAdDomainTldPlusOne, urlAdDomainTldPlusOne)
+        addNewExemption(savedAdDomainTldPlusOne, urlAdDomainTldPlusOne, url)
 
         adClickData.removeAdDomain()
     }
@@ -96,8 +96,10 @@ class DuckDuckGoAdClickManager @Inject constructor(
         // return false
 
         val documentUrlHost = UriString.host(documentUrl)?.takeIf { it != DUCKDUCKGO_HOST } ?: return false
+        val documentUrlTlDPlusOne = toTldPlusOne(documentUrl) ?: return false
 
-        if (!adClickData.isHostExempted(documentUrlHost)) {
+        val hostExempted = adClickData.isHostExempted(documentUrlHost) || adClickData.isHostExempted(documentUrlTlDPlusOne)
+        if (!hostExempted) {
             return false
         }
 
@@ -111,6 +113,10 @@ class DuckDuckGoAdClickManager @Inject constructor(
         if (adClickAttribution.isAllowed(url)) {
             Timber.d("isExemption: Url $url MATCHES the allow list")
             val exemption = adClickData.getExemption()
+            if (adClickData.getCurrentPage().isNotEmpty()) {
+                adClickData.setCurrentPage("")
+                adClickPixels.updateCountPixel(AdClickPixelName.AD_CLICK_PAGELOADS_WITH_AD_ATTRIBUTION)
+            }
             val pixelFired = adClickPixels.fireAdClickActivePixel(exemption)
             if (pixelFired && exemption != null) {
                 adClickData.addExemption(exemption.copy(adClickActivePixelFired = true))
@@ -147,8 +153,8 @@ class DuckDuckGoAdClickManager @Inject constructor(
                 // navigation to another domain, add expiry
                 adClickData.addExemption(
                     exemption.copy(
-                        navigationExemptionDeadline = System.currentTimeMillis() + adClickAttribution.getNavigationExpirationMillis()
-                    )
+                        navigationExemptionDeadline = System.currentTimeMillis() + adClickAttribution.getNavigationExpirationMillis(),
+                    ),
                 )
             } else {
                 // navigation back to an existing domain, remove expiry
@@ -173,7 +179,7 @@ class DuckDuckGoAdClickManager @Inject constructor(
             // - ad detection happens on the shopping vertical tab
             // - the advertiser landing page loads in a new tab
             val sourceTabAdDomainTldPLusOne = adClickData.getAdDomainTldPlusOne(sourceTabId)
-            addNewExemption(sourceTabAdDomainTldPLusOne, hostTldPlusOne)
+            addNewExemption(sourceTabAdDomainTldPLusOne, hostTldPlusOne, url)
             adClickData.removeAdDomain(sourceTabId)
             return
         }
@@ -188,10 +194,9 @@ class DuckDuckGoAdClickManager @Inject constructor(
                     tabId,
                     sourceTabExemption.copy(
                         navigationExemptionDeadline = Exemption.NO_EXPIRY,
-                        adClickActivePixelFired = false
-                    )
+                        adClickActivePixelFired = false,
+                    ),
                 )
-                adClickPixels.updateCountPixel(AdClickPixelName.AD_CLICK_PAGELOADS_WITH_AD_ATTRIBUTION)
             }
         } else {
             // propagate exemption with timeout since it's a different host
@@ -201,29 +206,29 @@ class DuckDuckGoAdClickManager @Inject constructor(
                 sourceTabExemption.copy(
                     hostTldPlusOne = sourceTabHostTldPLusOne,
                     navigationExemptionDeadline = System.currentTimeMillis() + adClickAttribution.getNavigationExpirationMillis(),
-                    adClickActivePixelFired = false
-                )
+                    adClickActivePixelFired = false,
+                ),
             )
-            adClickPixels.updateCountPixel(AdClickPixelName.AD_CLICK_PAGELOADS_WITH_AD_ATTRIBUTION)
         }
     }
 
-    private fun addNewExemption(savedAdDomain: String?, urlAdDomain: String) {
+    private fun addNewExemption(savedAdDomain: String?, urlAdDomain: String, url: String) {
+        adClickData.setCurrentPage(url)
+
         if (savedAdDomain != null) {
             adClickData.addExemption(
                 Exemption(
                     hostTldPlusOne = savedAdDomain.ifEmpty { urlAdDomain },
                     navigationExemptionDeadline = Exemption.NO_EXPIRY,
-                    exemptionDeadline = System.currentTimeMillis() + adClickAttribution.getTotalExpirationMillis()
-                )
+                    exemptionDeadline = System.currentTimeMillis() + adClickAttribution.getTotalExpirationMillis(),
+                ),
             )
             adClickPixels.fireAdClickDetectedPixel(
                 savedAdDomain = savedAdDomain,
                 urlAdDomain = urlAdDomain,
                 heuristicEnabled = adClickAttribution.isHeuristicDetectionEnabled(),
-                domainEnabled = adClickAttribution.isDomainDetectionEnabled()
+                domainEnabled = adClickAttribution.isDomainDetectionEnabled(),
             )
-            adClickPixels.updateCountPixel(AdClickPixelName.AD_CLICK_PAGELOADS_WITH_AD_ATTRIBUTION)
         }
     }
 

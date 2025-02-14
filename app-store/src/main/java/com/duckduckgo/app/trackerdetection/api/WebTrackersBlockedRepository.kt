@@ -18,14 +18,14 @@ package com.duckduckgo.app.trackerdetection.api
 
 import com.duckduckgo.app.trackerdetection.db.DatabaseDateFormatter
 import com.duckduckgo.app.trackerdetection.db.WebTrackerBlocked
+import java.time.LocalDateTime
 import kotlinx.coroutines.flow.Flow
-import org.threeten.bp.LocalDateTime
 
 interface WebTrackersBlockedRepository {
 
     fun get(
         startTime: () -> String,
-        endTime: String = noEndDate()
+        endTime: String = noEndDate(),
     ): Flow<List<WebTrackerBlocked>>
 
     private fun noEndDate(): String {

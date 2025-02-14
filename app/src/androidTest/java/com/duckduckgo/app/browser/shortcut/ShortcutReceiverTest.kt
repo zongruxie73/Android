@@ -17,18 +17,16 @@
 package com.duckduckgo.app.browser.shortcut
 
 import android.content.Intent
-import com.duckduckgo.app.CoroutineTestRule
 import com.duckduckgo.app.pixels.AppPixelName
 import com.duckduckgo.app.statistics.pixels.Pixel
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.verify
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.duckduckgo.common.test.CoroutineTestRule
 import kotlinx.coroutines.test.TestScope
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 
-@ExperimentalCoroutinesApi
 class ShortcutReceiverTest {
 
     @get:Rule

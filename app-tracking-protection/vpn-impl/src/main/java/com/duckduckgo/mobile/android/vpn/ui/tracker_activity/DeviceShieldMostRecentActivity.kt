@@ -20,9 +20,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import com.duckduckgo.anvil.annotations.InjectWith
-import com.duckduckgo.app.global.DuckDuckGoActivity
+import com.duckduckgo.common.ui.DuckDuckGoActivity
+import com.duckduckgo.common.ui.viewbinding.viewBinding
 import com.duckduckgo.di.scopes.ActivityScope
-import com.duckduckgo.mobile.android.ui.viewbinding.viewBinding
 import com.duckduckgo.mobile.android.vpn.databinding.ActivityDeviceShieldAllTracerActivityBinding
 
 @InjectWith(ActivityScope::class)
@@ -38,6 +38,7 @@ class DeviceShieldMostRecentActivity : DuckDuckGoActivity() {
     }
 
     override fun onBackPressed() {
+        super.onBackPressed()
         finish()
     }
 
@@ -47,7 +48,7 @@ class DeviceShieldMostRecentActivity : DuckDuckGoActivity() {
     }
 
     companion object {
-        fun intent(context: Context): Intent {
+        internal fun intent(context: Context): Intent {
             return Intent(context, DeviceShieldMostRecentActivity::class.java)
         }
     }

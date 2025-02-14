@@ -17,20 +17,20 @@
 package com.duckduckgo.mobile.android.vpn.processor.tcp.tracker
 
 import androidx.annotation.WorkerThread
-import com.duckduckgo.app.utils.ConflatedJob
+import com.duckduckgo.common.utils.ConflatedJob
 import com.duckduckgo.di.scopes.VpnScope
 import com.duckduckgo.mobile.android.vpn.model.VpnTracker
 import com.duckduckgo.mobile.android.vpn.service.VpnServiceCallbacks
 import com.duckduckgo.mobile.android.vpn.state.VpnStateMonitor.VpnStopReason
-import com.duckduckgo.mobile.android.vpn.store.VpnDatabase
+import com.duckduckgo.mobile.android.vpn.stats.AppTrackerBlockingStatsRepository
 import com.squareup.anvil.annotations.ContributesBinding
 import com.squareup.anvil.annotations.ContributesMultibinding
 import dagger.SingleInstanceIn
-import kotlinx.coroutines.*
-import timber.log.Timber
 import java.util.concurrent.Executors
 import javax.inject.Inject
 import kotlin.random.Random
+import kotlinx.coroutines.*
+import logcat.logcat
 
 interface AppTrackerRecorder {
     fun insertTracker(vpnTracker: VpnTracker)
@@ -45,15 +45,16 @@ interface AppTrackerRecorder {
     boundType = AppTrackerRecorder::class,
 )
 @SingleInstanceIn(VpnScope::class)
-class BatchedAppTrackerRecorder @Inject constructor(vpnDatabase: VpnDatabase) : VpnServiceCallbacks, AppTrackerRecorder {
+class BatchedAppTrackerRecorder @Inject constructor(
+    private val appTrackerBlockingRepository: AppTrackerBlockingStatsRepository,
+) : VpnServiceCallbacks, AppTrackerRecorder {
 
     private val batchedTrackers = mutableListOf<VpnTracker>()
-    private val dao = vpnDatabase.vpnTrackerDao()
     private val insertionDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
     private val periodicInsertionJob = ConflatedJob()
 
     override fun onVpnStarted(coroutineScope: CoroutineScope) {
-        Timber.i("Batched app tracker recorder starting")
+        logcat { "Batched app tracker recorder starting" }
 
         periodicInsertionJob += coroutineScope.launch(insertionDispatcher) {
             while (isActive) {
@@ -65,9 +66,9 @@ class BatchedAppTrackerRecorder @Inject constructor(vpnDatabase: VpnDatabase) : 
 
     override fun onVpnStopped(
         coroutineScope: CoroutineScope,
-        vpnStopReason: VpnStopReason
+        vpnStopReason: VpnStopReason,
     ) {
-        Timber.i("Batched app tracker recorder stopped")
+        logcat { "Batched app tracker recorder stopped" }
         periodicInsertionJob.cancel()
         coroutineScope.launch(insertionDispatcher) {
             flushInMemoryTrackersToDatabase()
@@ -85,8 +86,8 @@ class BatchedAppTrackerRecorder @Inject constructor(vpnDatabase: VpnDatabase) : 
             batchedTrackers.clear()
         }
 
-        dao.insert(toInsert)
-        Timber.v("Inserted %d trackers from memory into db", toInsert.size)
+        appTrackerBlockingRepository.insert(toInsert)
+        logcat { "Inserted ${toInsert.size} trackers from memory into db" }
     }
 
     override fun insertTracker(vpnTracker: VpnTracker) {

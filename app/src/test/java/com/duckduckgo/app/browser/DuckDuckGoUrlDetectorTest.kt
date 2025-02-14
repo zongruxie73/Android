@@ -29,7 +29,7 @@ class DuckDuckGoUrlDetectorTest {
 
     @Before
     fun setup() {
-        testee = DuckDuckGoUrlDetector()
+        testee = DuckDuckGoUrlDetectorImpl()
     }
 
     @Test
@@ -45,6 +45,16 @@ class DuckDuckGoUrlDetectorTest {
     @Test
     fun whenCheckingFullDDGUrlThenIdentifiedAsDDGUrl() {
         assertTrue(testee.isDuckDuckGoUrl("https://duckduckgo.com/?q=test%20search&tappv=android_0_2_0&t=ddg_android"))
+    }
+
+    @Test
+    fun whenCheckingSubdomainAndETLDisDDGThenReturnTrue() {
+        assertTrue(testee.isDuckDuckGoUrl("https://test.duckduckgo.com"))
+    }
+
+    @Test
+    fun whenCheckingSubdomainAndETLDisNotDDGThenReturnFalse() {
+        assertFalse(testee.isDuckDuckGoUrl("https://test.duckduckgo.test.com"))
     }
 
     @Test
@@ -132,12 +142,47 @@ class DuckDuckGoUrlDetectorTest {
     }
 
     @Test
-    fun whenUrlContainsSubdomainAndIsFromDuckDuckGoEmailUrlThenReturnFalse() {
-        assertFalse(testee.isDuckDuckGoEmailUrl("https://test.duckduckgo.com/email"))
+    fun whenUrlContainsSubdomainAndIsETLDForDuckDuckGoEmailUrlThenReturnTrue() {
+        assertTrue(testee.isDuckDuckGoEmailUrl("https://test.duckduckgo.com/email"))
+    }
+
+    @Test
+    fun whenUrlContainsSubdomainAndIsNotETLDForDuckDuckGoEmailUrlThenReturnTrue() {
+        assertFalse(testee.isDuckDuckGoEmailUrl("https://test.duckduckgo.test.com/email"))
     }
 
     @Test
     fun whenUrlHasNoSchemeAndIsFromDuckDuckGoUrlThenReturnsFalse() {
         assertFalse(testee.isDuckDuckGoEmailUrl("duckduckgo.com/email"))
+    }
+
+    @Test
+    fun whenDDGUrlContainsChatParameterThenCanBeRecognised() {
+        val vertical = testee.extractVertical("https://duckduckgo.com/?q=new+zealand+images&t=ffab&atb=v218-6&iar=images&iax=images&ia=images")
+        assertEquals("images", vertical)
+    }
+
+    @Test
+    fun whenDDGUrlNonChatThenReturnsFalse() {
+        val url = "https://duckduckgo.com/?q=restaurants+near+me&atb=v451-7ru&ko=-1&t=ddg_android&ia=web"
+        assertFalse(testee.isDuckDuckGoChatUrl(url))
+    }
+
+    @Test
+    fun whenDDGAIChatVerticalThenReturnsTrue() {
+        val url = "https://duckduckgo.com/?q=restaurants+near+me&atb=v451-7ru&ko=-1&t=ddg_android&ia=chat"
+        assertTrue(testee.isDuckDuckGoChatUrl(url))
+    }
+
+    @Test
+    fun whenDDGAIChatParameterThenReturnsFalse() {
+        val url = "https://duckduckgo.com/?q=restaurants+near+me&atb=v451-7ru&ko=-1&t=ddg_android&duckai=1"
+        assertFalse(testee.isDuckDuckGoChatUrl(url))
+    }
+
+    @Test
+    fun whenDDGAIChatVerticalAndAIChatParameterThenReturnsTrue() {
+        val url = "https://duckduckgo.com/?q=restaurants+near+me&atb=v451-7ru&ko=-1&t=ddg_android&ia=chat&duckai=1"
+        assertTrue(testee.isDuckDuckGoChatUrl(url))
     }
 }

@@ -21,13 +21,13 @@ import androidx.lifecycle.MutableLiveData
 import com.duckduckgo.app.browser.logindetection.FireproofDialogsEventHandler.Event
 import com.duckduckgo.app.fire.fireproofwebsite.data.FireproofWebsiteEntity
 import com.duckduckgo.app.fire.fireproofwebsite.data.FireproofWebsiteRepository
-import com.duckduckgo.app.global.DispatcherProvider
+import com.duckduckgo.app.fire.fireproofwebsite.ui.AutomaticFireproofSetting
 import com.duckduckgo.app.global.events.db.UserEventKey
 import com.duckduckgo.app.global.events.db.UserEventsStore
 import com.duckduckgo.app.pixels.AppPixelName
 import com.duckduckgo.app.settings.db.SettingsDataStore
-import com.duckduckgo.app.settings.db.SettingsSharedPreferences.LoginDetectorPrefsMapper.AutomaticFireproofSetting
 import com.duckduckgo.app.statistics.pixels.Pixel
+import com.duckduckgo.common.utils.DispatcherProvider
 import kotlinx.coroutines.withContext
 
 interface FireproofDialogsEventHandler {
@@ -53,7 +53,7 @@ class BrowserTabFireproofDialogsEventHandler(
     private val pixel: Pixel,
     private val fireproofWebsiteRepository: FireproofWebsiteRepository,
     private val appSettingsPreferencesStore: SettingsDataStore,
-    private val dispatchers: DispatcherProvider
+    private val dispatchers: DispatcherProvider,
 ) : FireproofDialogsEventHandler {
 
     override val event: MutableLiveData<Event> = MutableLiveData()
@@ -61,7 +61,7 @@ class BrowserTabFireproofDialogsEventHandler(
     override suspend fun onFireproofLoginDialogShown() {
         pixel.fire(
             pixel = AppPixelName.FIREPROOF_LOGIN_DIALOG_SHOWN,
-            parameters = mapOf(Pixel.PixelParameter.FIRE_EXECUTED to userTriedFireButton().toString())
+            parameters = mapOf(Pixel.PixelParameter.FIRE_EXECUTED to userTriedFireButton().toString()),
         )
     }
 
@@ -79,7 +79,7 @@ class BrowserTabFireproofDialogsEventHandler(
         pixel.fire(AppPixelName.FIREPROOF_WEBSITE_LOGIN_DISMISS, mapOf(Pixel.PixelParameter.FIRE_EXECUTED to userTriedFireButton().toString()))
         if (allowUserToDisableFireproofLoginActive()) {
             if (shouldAskToDisableFireproofLogin()) {
-                event.value = Event.AskToDisableLoginDetection
+                emitEvent(Event.AskToDisableLoginDetection)
             } else {
                 userEventsStore.registerUserEvent(UserEventKey.FIREPROOF_LOGIN_DIALOG_DISMISSED)
             }
@@ -89,7 +89,7 @@ class BrowserTabFireproofDialogsEventHandler(
     override suspend fun onDisableLoginDetectionDialogShown() {
         pixel.fire(
             AppPixelName.FIREPROOF_LOGIN_DISABLE_DIALOG_SHOWN,
-            mapOf(Pixel.PixelParameter.FIRE_EXECUTED to userTriedFireButton().toString())
+            mapOf(Pixel.PixelParameter.FIRE_EXECUTED to userTriedFireButton().toString()),
         )
     }
 
@@ -97,7 +97,7 @@ class BrowserTabFireproofDialogsEventHandler(
         appSettingsPreferencesStore.automaticFireproofSetting = AutomaticFireproofSetting.NEVER
         pixel.fire(
             AppPixelName.FIREPROOF_LOGIN_DISABLE_DIALOG_DISABLE,
-            mapOf(Pixel.PixelParameter.FIRE_EXECUTED to userTriedFireButton().toString())
+            mapOf(Pixel.PixelParameter.FIRE_EXECUTED to userTriedFireButton().toString()),
         )
     }
 
@@ -115,7 +115,7 @@ class BrowserTabFireproofDialogsEventHandler(
             fireproofWebsiteRepository.fireproofWebsite(domain)?.let {
                 pixel.fire(
                     AppPixelName.FIREPROOF_AUTOMATIC_DIALOG_ALWAYS,
-                    mapOf(Pixel.PixelParameter.FIRE_EXECUTED to userTriedFireButton().toString())
+                    mapOf(Pixel.PixelParameter.FIRE_EXECUTED to userTriedFireButton().toString()),
                 )
                 emitEvent(Event.FireproofWebSiteSuccess(fireproofWebsiteEntity = it))
             }
@@ -129,7 +129,7 @@ class BrowserTabFireproofDialogsEventHandler(
             fireproofWebsiteRepository.fireproofWebsite(domain)?.let {
                 pixel.fire(
                     AppPixelName.FIREPROOF_AUTOMATIC_DIALOG_FIREPROOF_SITE,
-                    mapOf(Pixel.PixelParameter.FIRE_EXECUTED to userTriedFireButton().toString())
+                    mapOf(Pixel.PixelParameter.FIRE_EXECUTED to userTriedFireButton().toString()),
                 )
                 emitEvent(Event.FireproofWebSiteSuccess(fireproofWebsiteEntity = it))
             }

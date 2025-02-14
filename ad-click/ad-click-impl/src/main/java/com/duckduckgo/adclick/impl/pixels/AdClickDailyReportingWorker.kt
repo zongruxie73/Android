@@ -17,8 +17,6 @@
 package com.duckduckgo.adclick.impl.pixels
 
 import android.content.Context
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
@@ -27,13 +25,14 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.duckduckgo.anvil.annotations.ContributesWorker
+import com.duckduckgo.app.lifecycle.MainProcessLifecycleObserver
+import com.duckduckgo.common.utils.DispatcherProvider
 import com.duckduckgo.di.scopes.AppScope
 import com.squareup.anvil.annotations.ContributesMultibinding
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 @ContributesWorker(AppScope::class)
 class AdClickDailyReportingWorker(context: Context, workerParameters: WorkerParameters) :
@@ -42,8 +41,11 @@ class AdClickDailyReportingWorker(context: Context, workerParameters: WorkerPara
     @Inject
     lateinit var adClickPixels: AdClickPixels
 
+    @Inject
+    lateinit var dispatchers: DispatcherProvider
+
     override suspend fun doWork(): Result {
-        return withContext(Dispatchers.IO) {
+        return withContext(dispatchers.io()) {
             adClickPixels.fireCountPixel(AdClickPixelName.AD_CLICK_PAGELOADS_WITH_AD_ATTRIBUTION)
             return@withContext Result.success()
         }
@@ -52,11 +54,11 @@ class AdClickDailyReportingWorker(context: Context, workerParameters: WorkerPara
 
 @ContributesMultibinding(
     scope = AppScope::class,
-    boundType = LifecycleObserver::class
+    boundType = MainProcessLifecycleObserver::class,
 )
 class AdClickDailyReportingWorkerScheduler @Inject constructor(
-    private val workManager: WorkManager
-) : DefaultLifecycleObserver {
+    private val workManager: WorkManager,
+) : MainProcessLifecycleObserver {
 
     override fun onCreate(owner: LifecycleOwner) {
         super.onCreate(owner)

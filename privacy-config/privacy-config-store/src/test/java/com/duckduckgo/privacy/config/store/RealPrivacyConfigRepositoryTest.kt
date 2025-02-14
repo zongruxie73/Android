@@ -16,11 +16,11 @@
 
 package com.duckduckgo.privacy.config.store
 
+import org.junit.Before
+import org.junit.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import org.junit.Before
-import org.junit.Test
 
 class RealPrivacyConfigRepositoryTest {
 
@@ -37,7 +37,7 @@ class RealPrivacyConfigRepositoryTest {
 
     @Test
     fun whenInsertPrivacyConfigThenCallInsert() {
-        val privacyConfig = PrivacyConfig(id = 1, version = 1, readme = "readme")
+        val privacyConfig = PrivacyConfig(id = 1, version = 1, readme = "readme", eTag = "eTag", timestamp = "2023-01-01")
 
         testee.insert(privacyConfig)
 

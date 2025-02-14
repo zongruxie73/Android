@@ -26,7 +26,7 @@ interface CookiesFeatureToggleStore {
 
     fun get(
         featureName: CookiesFeatureName,
-        defaultValue: Boolean
+        defaultValue: Boolean,
     ): Boolean
 
     fun getMinSupportedVersion(featureName: CookiesFeatureName): Int
@@ -35,8 +35,7 @@ interface CookiesFeatureToggleStore {
 }
 
 class RealCookiesFeatureToggleStore(private val context: Context) : CookiesFeatureToggleStore {
-    private val preferences: SharedPreferences
-        get() = context.getSharedPreferences(FILENAME, Context.MODE_PRIVATE)
+    private val preferences: SharedPreferences by lazy { context.getSharedPreferences(FILENAME, Context.MODE_PRIVATE) }
 
     override fun deleteAll() {
         preferences.edit().clear().apply()
@@ -68,5 +67,5 @@ class RealCookiesFeatureToggleStore(private val context: Context) : CookiesFeatu
 data class CookiesFeatureToggles(
     val featureName: CookiesFeatureName,
     val enabled: Boolean,
-    val minSupportedVersion: Int?
+    val minSupportedVersion: Int?,
 )

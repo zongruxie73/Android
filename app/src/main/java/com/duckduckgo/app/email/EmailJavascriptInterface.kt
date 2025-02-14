@@ -19,10 +19,10 @@ package com.duckduckgo.app.email
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import com.duckduckgo.app.browser.DuckDuckGoUrlDetector
-import com.duckduckgo.app.global.DispatcherProvider
-import com.duckduckgo.feature.toggles.api.FeatureToggle
-import com.duckduckgo.privacy.config.api.Autofill
-import com.duckduckgo.privacy.config.api.PrivacyFeatureName
+import com.duckduckgo.autofill.api.Autofill
+import com.duckduckgo.autofill.api.AutofillFeature
+import com.duckduckgo.autofill.api.email.EmailManager
+import com.duckduckgo.common.utils.DispatcherProvider
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 
@@ -31,9 +31,9 @@ class EmailJavascriptInterface(
     private val webView: WebView,
     private val urlDetector: DuckDuckGoUrlDetector,
     private val dispatcherProvider: DispatcherProvider,
-    private val featureToggle: FeatureToggle,
+    private val autofillFeature: AutofillFeature,
     private val autofill: Autofill,
-    private val showNativeTooltip: () -> Unit
+    private val showNativeTooltip: () -> Unit,
 ) {
 
     private fun getUrl(): String? {
@@ -47,7 +47,7 @@ class EmailJavascriptInterface(
         return (url != null && urlDetector.isDuckDuckGoEmailUrl(url))
     }
 
-    private fun isFeatureEnabled() = featureToggle.isFeatureEnabled(PrivacyFeatureName.AutofillFeatureName.value, defaultValue = true)
+    private fun isAutofillEnabled() = autofillFeature.self().isEnabled()
 
     @JavascriptInterface
     fun isSignedIn(): String {
@@ -84,7 +84,7 @@ class EmailJavascriptInterface(
     fun storeCredentials(
         token: String,
         username: String,
-        cohort: String
+        cohort: String,
     ) {
         if (isUrlFromDuckDuckGoEmail()) {
             emailManager.storeCredentials(token, username, cohort)
@@ -101,7 +101,7 @@ class EmailJavascriptInterface(
     @JavascriptInterface
     fun showTooltip() {
         getUrl()?.let {
-            if (isFeatureEnabled() && !autofill.isAnException(it)) {
+            if (isAutofillEnabled() && !autofill.isAnException(it)) {
                 showNativeTooltip()
             }
         }

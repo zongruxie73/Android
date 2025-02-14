@@ -16,26 +16,23 @@
 
 package com.duckduckgo.app.global.rating
 
-import com.duckduckgo.app.CoroutineTestRule
 import com.duckduckgo.app.browser.rating.db.AppEnjoymentRepository
 import com.duckduckgo.app.usage.app.AppDaysUsedRepository
-import org.mockito.kotlin.any
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.duckduckgo.common.test.CoroutineTestRule
+import java.util.*
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import java.util.*
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
-@ExperimentalCoroutinesApi
 @Suppress("RemoveExplicitTypeArguments")
 class SecondaryPromptDeciderTest {
 
-    @ExperimentalCoroutinesApi
     @get:Rule
     var coroutinesTestRule = CoroutineTestRule()
 

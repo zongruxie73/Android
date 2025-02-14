@@ -16,14 +16,12 @@
 
 package com.duckduckgo.voice.impl
 
-import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.result.ActivityResultCaller
-import androidx.core.app.ActivityCompat
 import com.duckduckgo.app.statistics.pixels.Pixel
 import com.duckduckgo.di.scopes.ActivityScope
 import com.duckduckgo.voice.impl.ActivityResultLauncherWrapper.Action.LaunchPermissionRequest
@@ -36,7 +34,8 @@ interface PermissionRequest {
     fun registerResultsCallback(
         caller: ActivityResultCaller,
         activity: Activity,
-        onPermissionsGranted: () -> Unit
+        onPermissionsGranted: () -> Unit,
+        onVoiceSearchDisabled: () -> Unit = {},
     )
 
     fun launch(activity: Activity)
@@ -47,16 +46,20 @@ class MicrophonePermissionRequest @Inject constructor(
     private val pixel: Pixel,
     private val voiceSearchRepository: VoiceSearchRepository,
     private val voiceSearchPermissionDialogsLauncher: VoiceSearchPermissionDialogsLauncher,
-    private val activityResultLauncherWrapper: ActivityResultLauncherWrapper
+    private val activityResultLauncherWrapper: ActivityResultLauncherWrapper,
+    private val permissionRationale: PermissionRationale,
 ) : PermissionRequest {
     companion object {
         private const val SCHEME_PACKAGE = "package"
     }
 
+    private lateinit var voiceSearchDisabled: () -> Unit
+
     override fun registerResultsCallback(
         caller: ActivityResultCaller,
         activity: Activity,
-        onPermissionsGranted: () -> Unit
+        onPermissionsGranted: () -> Unit,
+        onVoiceSearchDisabled: () -> Unit,
     ) {
         activityResultLauncherWrapper.register(
             caller,
@@ -64,19 +67,21 @@ class MicrophonePermissionRequest @Inject constructor(
                 if (result) {
                     onPermissionsGranted()
                 } else {
-                    if (!ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.RECORD_AUDIO)) {
+                    if (!permissionRationale.shouldShow(activity)) {
                         voiceSearchRepository.declinePermissionForever()
                     }
                 }
-            }
+            },
         )
+        voiceSearchDisabled = onVoiceSearchDisabled
     }
 
     override fun launch(activity: Activity) {
         if (voiceSearchRepository.getHasPermissionDeclinedForever()) {
             voiceSearchPermissionDialogsLauncher.showNoMicAccessDialog(
                 activity,
-                { activity.launchDuckDuckGoSettings() }
+                { activity.launchDuckDuckGoSettings() },
+                { showRemoveVoiceSearchDialog(activity) },
             )
         } else {
             if (voiceSearchRepository.getHasAcceptedRationaleDialog()) {
@@ -85,7 +90,7 @@ class MicrophonePermissionRequest @Inject constructor(
                 voiceSearchPermissionDialogsLauncher.showPermissionRationale(
                     activity,
                     { handleRationaleAccepted() },
-                    { handleRationaleCancelled() }
+                    { handleRationaleCancelled(activity) },
                 )
             }
         }
@@ -104,7 +109,18 @@ class MicrophonePermissionRequest @Inject constructor(
         activityResultLauncherWrapper.launch(LaunchPermissionRequest)
     }
 
-    private fun handleRationaleCancelled() {
+    private fun handleRationaleCancelled(context: Context) {
         pixel.fire(VoiceSearchPixelNames.VOICE_SEARCH_PRIVACY_DIALOG_REJECTED)
+        showRemoveVoiceSearchDialog(context)
+    }
+
+    private fun showRemoveVoiceSearchDialog(context: Context) {
+        voiceSearchPermissionDialogsLauncher.showRemoveVoiceSearchDialog(
+            context,
+            onRemoveVoiceSearch = {
+                voiceSearchRepository.setVoiceSearchUserEnabled(false)
+                voiceSearchDisabled()
+            },
+        )
     }
 }

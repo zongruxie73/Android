@@ -17,25 +17,23 @@
 plugins {
     id 'com.android.library'
     id 'kotlin-android'
-    id 'kotlin-kapt'
+    id 'com.google.devtools.ksp'
 }
 
 apply from: "$rootProject.projectDir/gradle/android-library.gradle"
 
 dependencies {
-    implementation project(path: ':common')
+    implementation project(path: ':common-utils')
 
-    implementation Kotlin.stdlib.jdk7
     implementation AndroidX.core.ktx
 
-    implementation JakeWharton.timber
     implementation Square.retrofit2.converter.moshi
 
     // Room
     implementation AndroidX.room.runtime
     implementation AndroidX.room.rxJava2
     implementation AndroidX.room.ktx
-    kapt AndroidX.room.compiler
+    ksp AndroidX.room.compiler
 
     testImplementation Testing.junit4
     testImplementation Testing.mockito.kotlin

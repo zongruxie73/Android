@@ -25,11 +25,10 @@ import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.platform.app.InstrumentationRegistry.getInstrumentation
-import com.duckduckgo.app.global.exception.UncaughtExceptionSource
+import com.duckduckgo.app.fire.fireproofwebsite.ui.AutomaticFireproofSetting.ASK_EVERY_TIME
+import com.duckduckgo.app.fire.fireproofwebsite.ui.AutomaticFireproofSetting.NEVER
 import com.duckduckgo.app.onboarding.store.AppStage
 import com.duckduckgo.app.settings.db.SettingsDataStore
-import com.duckduckgo.app.settings.db.SettingsSharedPreferences.LoginDetectorPrefsMapper.AutomaticFireproofSetting.ASK_EVERY_TIME
-import com.duckduckgo.app.settings.db.SettingsSharedPreferences.LoginDetectorPrefsMapper.AutomaticFireproofSetting.NEVER
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -51,7 +50,7 @@ class AppDatabaseTest {
     var instantTaskExecutorRule = InstantTaskExecutorRule()
 
     @get:Rule
-    val testHelper = MigrationTestHelper(getInstrumentation(), AppDatabase::class.qualifiedName, FrameworkSQLiteOpenHelperFactory())
+    val testHelper = MigrationTestHelper(getInstrumentation(), AppDatabase::class.qualifiedName!!, FrameworkSQLiteOpenHelperFactory())
 
     private val context = mock<Context>()
     private val mockSettingsDataStore: SettingsDataStore = mock()
@@ -119,7 +118,6 @@ class AppDatabaseTest {
     @Test
     fun whenMigratingFromVersion4To5ThenTabsAreConsideredViewed() {
         testHelper.createDatabase(TEST_DB_NAME, 4).use {
-
             it.execSQL("INSERT INTO `tabs` values ('tabid1', 'url', 'title') ")
 
             testHelper.runMigrationsAndValidate(TEST_DB_NAME, 5, true, migrationsProvider.MIGRATION_4_TO_5)
@@ -171,7 +169,6 @@ class AppDatabaseTest {
     @Test
     fun whenMigratingFromVersion11To12ThenTabsDoNotSkipHome() {
         testHelper.createDatabase(TEST_DB_NAME, 11).use {
-
             it.execSQL("INSERT INTO `tabs` values ('tabid1', 'url', 'title', 1, 0) ")
 
             testHelper.runMigrationsAndValidate(TEST_DB_NAME, 12, true, migrationsProvider.MIGRATION_11_TO_12)
@@ -234,8 +231,7 @@ class AppDatabaseTest {
     @Test
     fun whenMigratingFromVersion18To19ThenValidationSucceedsAndRowsDeletedFromTable() {
         testHelper.createDatabase(TEST_DB_NAME, 18).use {
-
-            it.execSQL("INSERT INTO `UncaughtExceptionEntity` values (1, '${UncaughtExceptionSource.GLOBAL.name}', 'message') ")
+            it.execSQL("INSERT INTO `UncaughtExceptionEntity` values (1, 'GLOBAL', 'message') ")
 
             testHelper.runMigrationsAndValidate(TEST_DB_NAME, 19, true, migrationsProvider.MIGRATION_18_TO_19)
 
@@ -489,14 +485,14 @@ class AppDatabaseTest {
 
     private fun givenUserStageIs(
         database: SupportSQLiteDatabase,
-        appStage: AppStage
+        appStage: AppStage,
     ) {
         database.execSQL("INSERT INTO `userStage` values (1, '${appStage.name}') ")
     }
 
     private fun givenUserStageIs(
         database: SupportSQLiteDatabase,
-        appStage: String
+        appStage: String,
     ) {
         database.execSQL("INSERT INTO `userStage` values (1, '$appStage') ")
     }
@@ -517,7 +513,7 @@ class AppDatabaseTest {
 
     private fun runMigrations(
         newVersion: Int,
-        vararg migrations: Migration
+        vararg migrations: Migration,
     ): SupportSQLiteDatabase {
         return testHelper.runMigrationsAndValidate(TEST_DB_NAME, newVersion, true, *migrations)
     }
@@ -525,7 +521,7 @@ class AppDatabaseTest {
     private fun createDatabaseAndMigrate(
         originalVersion: Int,
         newVersion: Int,
-        vararg migrations: Migration
+        vararg migrations: Migration,
     ): SupportSQLiteDatabase {
         createDatabase(originalVersion)
         return runMigrations(newVersion, *migrations)

@@ -30,11 +30,11 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import dagger.Binds
 import dagger.multibindings.Multibinds
+import java.io.File
+import javax.inject.Inject
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
-import java.io.File
-import javax.inject.Inject
 
 /**
  * This Anvil code generator allows inject ViewModel without manually creating the ViewModel factory
@@ -77,11 +77,44 @@ class ContributesPluginPointCodeGenerator : CodeGenerator {
                     .primaryConstructor(
                         PropertySpec
                             .builder(
-                                "plugins",
-                                ClassName("com.duckduckgo.di", "DaggerSet").parameterizedBy(pluginClassName)
+                                "setPlugins",
+                                ClassName("com.duckduckgo.di", "DaggerSet").parameterizedBy(pluginClassName),
                             )
                             .addModifiers(KModifier.PRIVATE)
-                            .build()
+                            .build(),
+                        PropertySpec
+                            .builder(
+                                "mapPlugins",
+                                ClassName("com.duckduckgo.di", "DaggerMap").parameterizedBy(Int::class.asClassName(), pluginClassName),
+                            )
+                            .addModifiers(KModifier.PRIVATE)
+                            .build(),
+                    )
+                    .addProperty(
+                        PropertySpec
+                            .builder(
+                                "sortedPlugins",
+                                kotlinCollectionFqName.asClassName(module).parameterizedBy(pluginClassName),
+                            )
+                            .addModifiers(KModifier.PRIVATE)
+                            .delegate(
+                                CodeBlock.builder()
+                                    .beginControlFlow("lazy")
+                                    .add(
+                                        """
+                                            mapPlugins.entries
+                                            .sortedWith(compareBy({ it.key }, { it.value.javaClass.name }))
+                                            .map { it.value }
+                                            .toMutableList()
+                                            .apply {
+                                                addAll(setPlugins.toList().sortedBy { it.javaClass.name })                                            
+                                            }
+                                        """.trimIndent(),
+                                    )
+                                    .endControlFlow()
+                                    .build(),
+                            )
+                            .build(),
                     )
                     .addFunction(
                         FunSpec.builder("getPlugins")
@@ -90,12 +123,12 @@ class ContributesPluginPointCodeGenerator : CodeGenerator {
                             .addComment("Sort plugins by class name to ensure execution consistency")
                             .addCode(
                                 """
-                                    return plugins.toList().sortedBy { it.javaClass.name }
-                                """.trimIndent()
+                                    return sortedPlugins
+                                """.trimIndent(),
                             )
-                            .build()
+                            .build(),
                     )
-                    .build()
+                    .build(),
             )
         }
 
@@ -115,39 +148,46 @@ class ContributesPluginPointCodeGenerator : CodeGenerator {
                     .addAnnotation(
                         AnnotationSpec
                             .builder(ContributesTo::class).addMember("scope = %T::class", scope.asClassName())
-                            .build()
+                            .build(),
                     )
                     .addModifiers(KModifier.ABSTRACT)
                     .addFunction(
-                        FunSpec.builder("bindEmpty${vmClass.shortName}_PluginPoint")
+                        FunSpec.builder("bindSetEmpty${vmClass.shortName}_PluginPoint")
                             .addAnnotation(AnnotationSpec.builder(Multibinds::class).build())
                             .addModifiers(KModifier.ABSTRACT)
                             .returns(daggerSetFqName.asClassName(module).parameterizedBy(pluginClassName))
-                            .build()
+                            .build(),
+                    )
+                    .addFunction(
+                        FunSpec.builder("bindMapEmpty${vmClass.shortName}_PluginPoint")
+                            .addAnnotation(AnnotationSpec.builder(Multibinds::class).build())
+                            .addModifiers(KModifier.ABSTRACT)
+                            .returns(daggerMapFqName.asClassName(module).parameterizedBy(Int::class.asClassName(), pluginClassName))
+                            .build(),
                     )
                     .addFunction(
                         FunSpec.builder("bind${vmClass.shortName}_PluginPoint")
                             .addParameter(
                                 "pluginPoint",
-                                FqName("$generatedPackage.${vmClass.shortName}_PluginPoint").asClassName(module)
+                                FqName("$generatedPackage.${vmClass.shortName}_PluginPoint").asClassName(module),
                             )
                             .addAnnotation(AnnotationSpec.builder(Binds::class).build())
                             .addModifiers(KModifier.ABSTRACT)
                             .returns(pluginPointFqName.asClassName(module).parameterizedBy(pluginClassName))
-                            .build()
+                            .build(),
                     )
-                    .build()
+                    .build(),
             ).build()
         }
 
         return createGeneratedFile(codeGenDir, generatedPackage, moduleClassName, content)
-
     }
 
     companion object {
-        private val pluginPointFqName = FqName("com.duckduckgo.app.global.plugins.PluginPoint")
+        private val pluginPointFqName = FqName("com.duckduckgo.common.utils.plugins.PluginPoint")
         private val kotlinCollectionFqName = FqName("kotlin.collections.Collection")
         private val daggerSetFqName = FqName("com.duckduckgo.di.DaggerSet")
+        private val daggerMapFqName = FqName("com.duckduckgo.di.DaggerMap")
     }
 
     private fun TypeSpec.Builder.primaryConstructor(vararg properties: PropertySpec): TypeSpec.Builder {

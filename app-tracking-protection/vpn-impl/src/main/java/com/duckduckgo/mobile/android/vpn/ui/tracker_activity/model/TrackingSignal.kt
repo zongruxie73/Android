@@ -19,12 +19,12 @@ package com.duckduckgo.mobile.android.vpn.ui.tracker_activity.model
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import com.duckduckgo.mobile.android.vpn.R
-import timber.log.Timber
+import logcat.logcat
 
 enum class TrackingSignal(
     val signaltag: String,
     @StringRes val signalDisplayName: Int,
-    @DrawableRes val signalIcon: Int
+    @DrawableRes val signalIcon: Int,
 ) {
     AAID("AAID", R.string.atp_TrackingSignalAAID, R.drawable.ic_signal_advertising_id),
     UNIQUE_IDENTIFIER("unique_identifier", R.string.atp_TrackingSignalUniqueIdentifier, R.drawable.ic_signal_advertising_id),
@@ -46,17 +46,17 @@ enum class TrackingSignal(
     DEVICE_CPU_TYPE("device_cpu_type", R.string.atp_TrackingSignalCPUData, R.drawable.ic_signal_device),
     DEVICE_CPU_STATUS("device_resolution", R.string.atp_TrackingSignalCPUData, R.drawable.ic_signal_device),
     DEVICE_RESOLUTION("device_hardware_name", R.string.atp_TrackingSignalScreenResolution, R.drawable.ic_signal_device),
-    DEVICE_TOTAL_STORAGE("device_total_storage", R.string.atp_TrackingSignalInternalStorage, R.drawable.ic_signal_storage),
+    DEVICE_TOTAL_STORAGE("device_total_storage", R.string.atp_TrackingSignalInternalStorage, R.drawable.ic_signal_chip),
     EXTERNAL_TOTAL_STORAGE("external_total_storage", R.string.atp_TrackingSignalExternalStorage, R.drawable.ic_signal_storage),
-    DEVIC_TOTAL_MEMORY("device_total_memory", R.string.atp_TrackingSignalDeviceMemory, R.drawable.ic_signal_storage),
-    DEVICE_NAME("device_name", R.string.atp_TrackingSignalDeviceName, R.drawable.ic_signal_settings),
+    DEVIC_TOTAL_MEMORY("device_total_memory", R.string.atp_TrackingSignalDeviceMemory, R.drawable.ic_signal_chip),
+    DEVICE_NAME("device_name", R.string.atp_TrackingSignalDeviceName, R.drawable.ic_signal_info),
     WIFI_SSID("wifi_ssid", R.string.atp_TrackingSignalWifiNetworkName, R.drawable.ic_signal_wifi),
     APP_NAME("app_name", R.string.atp_TrackingSignalAppName, R.drawable.ic_signal_app),
     APP_VERSION("app_version", R.string.atp_TrackingSignalAppVersion, R.drawable.ic_signal_app),
     LOCAL_IP("local_ip", R.string.atp_TrackingSignalLocalIPAddress, R.drawable.ic_signal_wifi),
     NETWORK_ISP("network_isp", R.string.atp_TrackingSignalISP, R.drawable.ic_signal_identifiers),
     DEVICE_BOOT_TIME("device_boot_time", R.string.atp_TrackingSignalDeviceBootTime, R.drawable.ic_signal_time),
-    DEVICE_CONNECTIVITY("device_connectivity", R.string.atp_TrackingSignalNetworkConnectionType, R.drawable.ic_signal_settings),
+    DEVICE_CONNECTIVITY("device_connectivity", R.string.atp_TrackingSignalNetworkConnectionType, R.drawable.ic_signal_identifiers),
     DEVICE_VOLUME("device_volume", R.string.atp_TrackingSignalSystemVolume, R.drawable.ic_signal_volume),
     DEVICE_BATTERY_LEVEL("device_battery_level", R.string.atp_TrackingSignalBatteryLevel, R.drawable.ic_signal_battery),
     DEVICE_CHARGING_STATUS("local_ip", R.string.atp_TrackingSignalChargingStatus, R.drawable.ic_signal_battery),
@@ -66,13 +66,13 @@ enum class TrackingSignal(
     ROTATION_DATA("roration_data", R.string.atp_TrackingSignalRotationData, R.drawable.ic_signal_sensor),
     DEVICE_ORIENTATION("device_orientation", R.string.atp_TrackingSignalDeviceOrientation, R.drawable.ic_signal_device),
     DEVICE_MAGNOMETER("device_magnometer", R.string.atp_TrackingSignalMagnetometerData, R.drawable.ic_signal_sensor),
-    DEVICE_FREE_STORAGE("device_free_storage", R.string.atp_TrackingSignalAvailableInternalStorage, R.drawable.ic_signal_storage),
+    DEVICE_FREE_STORAGE("device_free_storage", R.string.atp_TrackingSignalAvailableInternalStorage, R.drawable.ic_signal_chip),
     EXTERNAL_FREE_STORAGE("external_free_storage", R.string.atp_TrackingSignalAvailableExternalStorage, R.drawable.ic_signal_storage),
     DEVICE_TOTAL_MEMORY("device_total_memory", R.string.atp_TrackingSignalDeviceTotalMemory, R.drawable.ic_signal_storage),
-    DEVICE_FREE_MEMORY("device_free_memory", R.string.atp_TrackingSignalAvailableDeviceMemory, R.drawable.ic_signal_storage),
+    DEVICE_FREE_MEMORY("device_free_memory", R.string.atp_TrackingSignalAvailableDeviceMemory, R.drawable.ic_signal_chip),
     DEVICE_SCREEN_MARGINS("device_screen_margins", R.string.atp_TrackingSignalScreenMargins, R.drawable.ic_signal_device),
     DEVICE_SCREEN_DENSITY("device_screen_density", R.string.atp_TrackingSignalScreenDensity, R.drawable.ic_signal_device),
-    DEVICE_FONT_SIZE("device_font_size", R.string.atp_TrackingSignalFontSize, R.drawable.ic_signal_settings),
+    DEVICE_FONT_SIZE("device_font_size", R.string.atp_TrackingSignalFontSize, R.drawable.ic_signal_font_size),
     NETWORK_CARRIER("network_carrier", R.string.atp_TrackingSignalNetworkCarrier, R.drawable.ic_signal_identifiers),
     INSTALL_DATE("install_date", R.string.atp_TrackingSignalAppInstallDate, R.drawable.ic_signal_time),
     FIRST_LAUNCH_DATE("first_launch_date", R.string.atp_TrackingSignalFirstAppLaunchDate, R.drawable.ic_signal_time),
@@ -87,14 +87,15 @@ enum class TrackingSignal(
     BIRTHDAY("birthday", R.string.atp_TrackingSignalBirthday, R.drawable.ic_signal_person),
     GENDER("gender", R.string.atp_TrackingSignalGender, R.drawable.ic_signal_person),
     FIRST_NAME("first_name", R.string.atp_TrackingSignalFirstName, R.drawable.ic_signal_person),
-    LAST_NAME("last_name", R.string.atp_TrackingSignalLastName, R.drawable.ic_signal_person);
+    LAST_NAME("last_name", R.string.atp_TrackingSignalLastName, R.drawable.ic_signal_person),
+    ;
 
     companion object {
         fun fromTag(signalTag: String): TrackingSignal {
             return try {
                 valueOf(signalTag.uppercase())
             } catch (exception: Exception) {
-                Timber.d("Unknown TrackingSignal $signalTag")
+                logcat { "Unknown TrackingSignal $signalTag" }
                 UNIQUE_IDENTIFIER
             }
         }

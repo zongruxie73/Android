@@ -19,15 +19,22 @@ plugins {
     id 'kotlin'
 }
 
-apply from: "$rootProject.projectDir/spotless.gradle"
+apply from: "$rootProject.projectDir/code-formatting.gradle"
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+kotlin {
+    jvmToolchain(17)
 }
 
 dependencies {
+    api project(":experiments-api")
+    api project(":feature-toggles-internal-api")
+
     implementation Google.dagger
-    implementation Kotlin.stdlib.jdk7
+    implementation "org.apache.commons:commons-math3:_"
 }
 

@@ -16,17 +16,17 @@
 
 package com.duckduckgo.privacy.config.impl.features.drm
 
-import com.duckduckgo.app.FileUtilities
+import com.duckduckgo.common.test.FileUtilities
 import com.duckduckgo.privacy.config.api.PrivacyFeatureName
 import com.duckduckgo.privacy.config.store.PrivacyFeatureToggles
 import com.duckduckgo.privacy.config.store.PrivacyFeatureTogglesRepository
 import com.duckduckgo.privacy.config.store.features.drm.DrmRepository
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.verify
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.mockito.ArgumentMatchers.anyList
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 
 class DrmPluginTest {
     lateinit var testee: DrmPlugin
